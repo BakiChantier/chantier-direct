@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section principale */}
-        <div className="py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* À propos */}
           <div className="space-y-4">
             <div className="flex items-center justify-center lg:justify-start space-x-2">
@@ -54,45 +54,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/comment-ca-marche" className="text-gray-300 hover:text-white text-sm transition-colors">
+                <Link href="/documentation" className="text-gray-300 hover:text-white text-sm transition-colors">
                   Comment ça marche
-                </Link>
-              </li>
-              <li>
-                <Link href="/tarifs" className="text-gray-300 hover:text-white text-sm transition-colors">
-                  Tarifs
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Services */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center lg:text-start">Services</h3>
-            <ul className="space-y-3 flex flex-col items-center lg:items-start">
-              <li>
-                <Link href="/pour-donneurs-ordre" className="text-gray-300 hover:text-white text-sm transition-colors">
-                  Pour les donneurs d&apos;ordre
-                </Link>
-              </li>
-              <li>
-                <Link href="/pour-sous-traitants" className="text-gray-300 hover:text-white text-sm transition-colors">
-                  Pour les sous-traitants
-                </Link>
-              </li>
-              <li>
-                <Link href="/verification-documents" className="text-gray-300 hover:text-white text-sm transition-colors">
-                  Vérification des documents
-                </Link>
-              </li>
-              <li>
-                <Link href="/assurance-qualite" className="text-gray-300 hover:text-white text-sm transition-colors">
-                  Assurance qualité
-                </Link>
-              </li>
-              <li>
-                <Link href="/support" className="text-gray-300 hover:text-white text-sm transition-colors">
-                  Support client
                 </Link>
               </li>
             </ul>
@@ -112,29 +75,12 @@ export default function Footer() {
               </div>
               <div className="flex flex-col items-center lg:items-start lg:flex-row space-x-3 text-sm text-gray-300">
                 <Mail className="h-4 w-4 flex-shrink-0" />
-                <Link href="mailto:contact@chantier-direct.com" className="hover:text-white transition-colors">
-                  contact@chantier-direct.com
+                <Link href="mailto:contact@chantier-direct.fr" className="hover:text-white transition-colors">
+                  contact@chantier-direct.fr
                 </Link>
               </div>
             </div>
-            
-            {/* Newsletter */}
-            <div className="space-y-2 pt-2">
-              <h4 className="text-sm font-semibold text-gray-200 text-center lg:text-start">Newsletter</h4>
-              <p className="text-xs text-gray-400 text-center lg:text-start">
-                Restez informé des dernières opportunités
-              </p>
-              <div className="flex">
-                <input
-                  type="email"
-                  placeholder="Votre email"
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-r-md text-sm font-medium transition-colors">
-                  S&apos;abonner
-                </button>
-              </div>
-            </div>
+          
           </div>
         </div>
 
@@ -142,20 +88,17 @@ export default function Footer() {
         <div className="border-t border-gray-800 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="flex flex-wrap justify-center md:justify-start gap-6 text-sm text-gray-400">
-              <Link href="/legal/mentions-legales" className="hover:text-white transition-colors">
+              <Link href="/legal/legal-mentions" className="hover:text-white transition-colors">
                 Mentions légales
               </Link>
-              <Link href="/legal/conditions-utilisation" className="hover:text-white transition-colors">
+              <Link href="/legal/terms" className="hover:text-white transition-colors">
                 Conditions d&apos;utilisation
               </Link>
-              <Link href="/legal/politique-confidentialite" className="hover:text-white transition-colors">
+              <Link href="/legal/privacy" className="hover:text-white transition-colors">
                 Politique de confidentialité
               </Link>
               <Link href="/legal/cookies" className="hover:text-white transition-colors">
                 Politique des cookies
-              </Link>
-              <Link href="/legal/rgpd" className="hover:text-white transition-colors">
-                RGPD
               </Link>
             </div>
             <div className="text-sm text-gray-400">
