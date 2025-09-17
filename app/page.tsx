@@ -112,50 +112,51 @@ export default function ChantierDirectHomepage() {
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen flex items-center">
         <div className="absolute inset-0 bg-grid-slate-100 bg-[size:20px_20px] [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left Column - Content */}
-            <div className="text-center lg:text-left fade-in-on-scroll">
-              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
-                <Building2 className="h-4 w-4" />
-                Plateforme BTP de confiance
+        <div className="relative w-full mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+              {/* Left Column - Content */}
+              <div className="text-center lg:text-left fade-in-on-scroll min-w-0">
+              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6 max-w-full">
+                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="truncate">Plateforme BTP de confiance</span>
               </div>
               
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-slate-900 leading-tight mb-6 break-words">
                 Connectez-vous aux 
                 <span className="text-blue-600 block">meilleurs pros du BTP</span>
               </h1>
               
-              <p className="text-xl text-slate-600 mb-8 max-w-2xl">
+              <p className="text-lg sm:text-xl text-slate-600 mb-8 max-w-2xl mx-auto lg:mx-0">
                 La plateforme qui simplifie la mise en relation entre donneurs d&apos;ordre et sous-traitants qualifiés. 
                 <span className="font-semibold text-slate-700">Trouvez votre partenaire idéal en 2 minutes.</span>
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4 mb-12">
-                <Link href="/annuaire" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl">
-                  Je cherche des sous-traitants
-                  <ArrowRight className="h-5 w-5" />
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12 justify-center lg:justify-start">
+                <Link href="/annuaire" className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl min-w-0 flex-shrink">
+                  <span className="truncate">Je cherche des sous-traitants</span>
+                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 </Link>
-                <Link href="/projets" className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 hover:border-blue-300 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-2">
-                  Je cherche des chantiers
-                  <Search className="h-5 w-5" />
+                <Link href="/projets" className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 hover:border-blue-300 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 min-w-0 flex-shrink">
+                  <span className="truncate">Je cherche des chantiers</span>
+                  <Search className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 </Link>
               </div>
               
               {/* Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                 {stats.map((stat, index) => (
                   <div key={index} className="text-center">
-                    <div className="text-2xl sm:text-3xl font-bold text-slate-900">{stat.number}</div>
-                    <div className="text-sm text-slate-600">{stat.label}</div>
+                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">{stat.number}</div>
+                    <div className="text-xs sm:text-sm text-slate-600">{stat.label}</div>
                   </div>
                 ))}
               </div>
             </div>
             
             {/* Right Column - Visual */}
-            <div className="relative fade-in-on-scroll">
-              <div className="bg-gradient-to-br from-white to-slate-100 rounded-2xl shadow-2xl p-8 border border-slate-200">
+            <div className="relative fade-in-on-scroll min-w-0">
+              <div className="bg-gradient-to-br from-white to-slate-100 rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 overflow-hidden">
                 {/* Mock Interface */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -169,27 +170,27 @@ export default function ChantierDirectHomepage() {
                     ) : (
                       latestProjects.map((p) => (
                         <Link key={p.id} href={`/projets/${p.id}`} className="block">
-                          <div className="bg-white rounded-lg p-4 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="font-semibold text-slate-900 truncate">{p.titre || 'Projet'}</div>
+                          <div className="bg-white rounded-lg p-3 sm:p-4 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-2 min-w-0">
+                              <div className="font-semibold text-slate-900 truncate flex-1 mr-2 text-sm sm:text-base">{p.titre || 'Projet'}</div>
                               {p.budgetMax ? (
-                                <div className="text-sm font-medium text-blue-600">{p.budgetMax}€</div>
+                                <div className="text-xs sm:text-sm font-medium text-blue-600 flex-shrink-0">{p.budgetMax}€</div>
                               ) : null}
                             </div>
-                            <div className="text-sm text-slate-600 mb-3">
+                            <div className="text-xs sm:text-sm text-slate-600 mb-2 sm:mb-3 truncate">
                               {(p.villeChantier || 'Ville inconnue')}{p.typeChantier ? ` • ${p.typeChantier}` : ''}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                              <span className="text-sm text-slate-600">Publié le {new Date(p.createdAt).toLocaleDateString()}</span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
+                              <span className="text-xs sm:text-sm text-slate-600 truncate">Publié le {new Date(p.createdAt).toLocaleDateString()}</span>
                             </div>
                           </div>
                         </Link>
                       ))
                     )}
                     <Link href="/projets" className="block">
-                      <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200 hover:bg-blue-100 transition-colors">
-                        <div className="text-center text-blue-700 font-medium">
+                      <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border-2 border-blue-200 hover:bg-blue-100 transition-colors">
+                        <div className="text-center text-blue-700 font-medium text-sm sm:text-base">
                           Voir tous les projets →
                         </div>
                       </div>
@@ -199,13 +200,14 @@ export default function ChantierDirectHomepage() {
               </div>
               
               {/* Floating elements */}
-              <div className="absolute -top-4 -right-4 bg-green-500 text-white p-3 rounded-xl shadow-lg float-animation">
-                <CheckCircle className="h-6 w-6" />
+              <div className="absolute top-2 right-2 sm:-top-4 sm:-right-4 bg-green-500 text-white p-2 sm:p-3 rounded-xl shadow-lg float-animation">
+                <CheckCircle className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <div className="absolute -bottom-4 -left-4 bg-blue-600 text-white p-3 rounded-xl shadow-lg float-animation" style={{animationDelay: '1s'}}>
-                <Shield className="h-6 w-6" />
+              <div className="absolute bottom-2 left-2 sm:-bottom-4 sm:-left-4 bg-blue-600 text-white p-2 sm:p-3 rounded-xl shadow-lg float-animation" style={{animationDelay: '1s'}}>
+                <Shield className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
+          </div>
           </div>
         </div>
       </section>

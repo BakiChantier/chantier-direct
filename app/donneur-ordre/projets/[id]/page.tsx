@@ -630,7 +630,7 @@ export default function ProjetDetailPage() {
           ) : (
             /* Vue détail sur mobile */
             selectedOffre && (
-              <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
                 {/* Header avec bouton retour mobile */}
                 <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
                   <div className="flex items-center space-x-3">

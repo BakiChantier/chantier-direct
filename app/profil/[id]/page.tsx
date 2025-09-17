@@ -7,6 +7,7 @@ import FileUpload from '@/components/FileUpload'
 import { SOUS_TRAITANT_DOCUMENTS } from '@/lib/document-types'
 import type { DocumentType } from '@prisma/client'
 import Image from 'next/image'
+
 interface User {
   id: string
   nom: string
