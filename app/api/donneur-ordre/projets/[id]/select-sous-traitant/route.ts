@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, isAdmin } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { sendOffreNotification } from '@/lib/email'
 
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -41,6 +42,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           select: { 
             id: true,
             nom: true,
+            prenom: true,
+            email: true,
             nomSociete: true
           }
         }
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
             id: true,
             nom: true,
             prenom: true,
+            email: true,
             nomSociete: true
           }
         }
@@ -137,7 +141,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           },
           include: {
             sousTraitant: {
-              select: { id: true }
+              select: { 
+                id: true,
+                nom: true,
+                prenom: true,
+                email: true,
+                nomSociete: true
+              }
             }
           }
         })
@@ -168,6 +178,98 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         }
       })
     })
+
+    // Envoyer les notifications email après la transaction
+    try {
+      // Notification au sous-traitant sélectionné
+      await sendOffreNotification({
+        donneurOrdre: {
+          nom: projet.donneurOrdre.nom,
+          prenom: projet.donneurOrdre.prenom || '',
+          email: projet.donneurOrdre.email,
+          nomSociete: projet.donneurOrdre.nomSociete || undefined
+        },
+        sousTraitant: {
+          nom: offreSelectionnee.sousTraitant.nom,
+          prenom: offreSelectionnee.sousTraitant.prenom || '', 
+          email: offreSelectionnee.sousTraitant.email,
+          nomSociete: offreSelectionnee.sousTraitant.nomSociete || undefined
+        },
+        projet: {
+          id: projet.id,
+          titre: projet.titre,
+          description: projet.description,
+          adresseChantier: projet.adresseChantier,
+          villeChantier: projet.villeChantier
+        },
+        offre: {
+          id: offreSelectionnee.id,
+          prix: offreSelectionnee.prixPropose,
+          delai: offreSelectionnee.delaiPropose,
+          message: offreSelectionnee.message || undefined
+        },
+        action: 'selectionnee'
+      })
+
+      // Notifications aux sous-traitants rejetés
+      const offresRefusees = await prisma.offre.findMany({
+        where: {
+          projetId: projetId,
+          status: 'REFUSEE'
+        },
+        include: {
+          sousTraitant: {
+            select: { 
+              id: true,
+              nom: true,
+              prenom: true,
+              email: true,
+              nomSociete: true
+            }
+          }
+        }
+      })
+
+      // Envoyer les notifications de refus en parallèle
+      await Promise.all(
+        offresRefusees.map(offre =>
+          sendOffreNotification({
+            donneurOrdre: {
+              nom: projet.donneurOrdre.nom,
+              prenom: projet.donneurOrdre.prenom || '',
+              email: projet.donneurOrdre.email,
+              nomSociete: projet.donneurOrdre.nomSociete || undefined
+            },
+            sousTraitant: {
+              nom: offre.sousTraitant.nom,
+              prenom: offre.sousTraitant.prenom || '',
+              email: offre.sousTraitant.email,
+              nomSociete: offre.sousTraitant.nomSociete || undefined
+            },
+            projet: {
+              id: projet.id,
+              titre: projet.titre,
+              description: projet.description,
+              adresseChantier: projet.adresseChantier,
+              villeChantier: projet.villeChantier
+            },
+            offre: {
+              id: offre.id,
+              prix: offre.prixPropose,
+              delai: offre.delaiPropose,
+              message: offre.message || undefined
+            },
+            action: 'rejetee'
+          }).catch(error => {
+            console.error(`Erreur notification rejet pour ${offre.sousTraitant.email}:`, error)
+          })
+        )
+      )
+
+    } catch (emailError) {
+      console.error('Erreur lors de l\'envoi des notifications email:', emailError)
+      // On continue même si les emails échouent
+    }
 
     return NextResponse.json({
       success: true,

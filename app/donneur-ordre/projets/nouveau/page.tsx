@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useUser } from '@/lib/user-context'
 import ProjectImageUpload from '@/components/ProjectImageUpload'
 import Image from 'next/image'
+import { DONNEUR_ORDRE_DOCUMENTS } from '@/lib/document-types'
 
 interface ProjectImage {
   id?: string
@@ -55,7 +56,18 @@ export default function NouvelAppelOffre() {
   const [additionalFields, setAdditionalFields] = useState<Array<{id: string, label: string, value: string}>>([])
   const [projectImages, setProjectImages] = useState<ProjectImage[]>([])
   const [uploadingImages, setUploadingImages] = useState(false)
+  const [verificationStatus, setVerificationStatus] = useState<'VERIFIED' | 'PENDING' | 'BLOCKED'>('VERIFIED')
+  const [checkingDocuments, setCheckingDocuments] = useState(true)
+  const [filesMode, setFilesMode] = useState<'upload' | 'link'>('upload')
+  const [externalFilesLink, setExternalFilesLink] = useState('')
   const descriptionRef = useRef<HTMLTextAreaElement | null>(null)
+
+  // Fonction pour obtenir la date de demain au format YYYY-MM-DD
+  const getTomorrowDate = () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    return tomorrow.toISOString().split('T')[0]
+  }
 
   const [formData, setFormData] = useState<ProjetFormData>({
     titre: '',
@@ -78,11 +90,15 @@ export default function NouvelAppelOffre() {
   // Clés pour le localStorage
   const STORAGE_KEY = 'nouveau-projet-form'
   const ADDITIONAL_FIELDS_KEY = 'nouveau-projet-additional-fields'
+  const EXTERNAL_LINK_KEY = 'nouveau-projet-external-link'
+  const FILES_MODE_KEY = 'nouveau-projet-files-mode'
 
   // Charger les données depuis localStorage au démarrage
   useEffect(() => {
     const savedFormData = localStorage.getItem(STORAGE_KEY)
     const savedAdditionalFields = localStorage.getItem(ADDITIONAL_FIELDS_KEY)
+    const savedExternalLink = localStorage.getItem(EXTERNAL_LINK_KEY)
+    const savedFilesMode = localStorage.getItem(FILES_MODE_KEY)
 
     if (savedFormData) {
       try {
@@ -101,6 +117,14 @@ export default function NouvelAppelOffre() {
         console.error('Erreur lors du chargement des champs additionnels:', error)
       }
     }
+
+    if (savedExternalLink) {
+      setExternalFilesLink(savedExternalLink)
+    }
+
+    if (savedFilesMode) {
+      setFilesMode(savedFilesMode as 'upload' | 'link')
+    }
   }, [])
 
   // Sauvegarder les données dans localStorage à chaque modification
@@ -112,10 +136,61 @@ export default function NouvelAppelOffre() {
     localStorage.setItem(ADDITIONAL_FIELDS_KEY, JSON.stringify(additionalFields))
   }, [additionalFields])
 
+  useEffect(() => {
+    localStorage.setItem(EXTERNAL_LINK_KEY, externalFilesLink)
+  }, [externalFilesLink])
+
+  useEffect(() => {
+    localStorage.setItem(FILES_MODE_KEY, filesMode)
+  }, [filesMode])
+
+  // Vérifier les documents du donneur d'ordre
+  useEffect(() => {
+    if (!isLoading && user?.role === 'DONNEUR_ORDRE') {
+      verifyDocuments()
+    } else if (!isLoading && user?.role !== 'DONNEUR_ORDRE') {
+      router.push('/login')
+    }
+  }, [user, isLoading, router])
+
+  const verifyDocuments = async () => {
+    try {
+      setCheckingDocuments(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/documents', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      
+      if (!res.ok) {
+        setVerificationStatus('BLOCKED')
+        return
+      }
+      
+      const json = await res.json()
+      const list = (json?.data || []) as Array<{ type: string; status: string; fileName: string }>
+      const required = DONNEUR_ORDRE_DOCUMENTS.filter(d => d.required)
+      const statuses = required.map(cfg => list.find(d => d.type === cfg.type)?.status || 'MISSING')
+      
+      if (statuses.every(s => s === 'APPROVED')) {
+        setVerificationStatus('VERIFIED')
+      } else if (statuses.some(s => s === 'REJECTED' || s === 'MISSING')) {
+        setVerificationStatus('BLOCKED')
+      } else {
+        setVerificationStatus('PENDING')
+      }
+    } catch {
+      setVerificationStatus('BLOCKED')
+    } finally {
+      setCheckingDocuments(false)
+    }
+  }
+
   // Nettoyer le localStorage après soumission réussie
   const clearFormData = () => {
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(ADDITIONAL_FIELDS_KEY)
+    localStorage.removeItem(EXTERNAL_LINK_KEY)
+    localStorage.removeItem(FILES_MODE_KEY)
   }
 
   // Vider le formulaire manuellement
@@ -140,13 +215,34 @@ export default function NouvelAppelOffre() {
     setFormData(emptyFormData)
     setAdditionalFields([])
     setProjectImages([])
+    setExternalFilesLink('')
+    setFilesMode('upload')
     clearFormData()
     setError('')
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value }
+      
+      // Validation des dates pour s'assurer de la cohérence
+      if (name === 'dateDebut' && value && newData.dateFin && value >= newData.dateFin) {
+        // Si date de début >= date de fin, ajuster la date de fin
+        const dateDebut = new Date(value)
+        dateDebut.setDate(dateDebut.getDate() + 1)
+        newData.dateFin = dateDebut.toISOString().split('T')[0]
+      }
+      
+      if ((name === 'dateDebut' || name === 'dateFin') && value && newData.delai && value >= newData.delai) {
+        // Si date de début ou fin >= délai, ajuster le délai
+        const dateRef = new Date(value)
+        dateRef.setDate(dateRef.getDate() + 1)
+        newData.delai = dateRef.toISOString().split('T')[0]
+      }
+      
+      return newData
+    })
   }
 
   // Gérer Tab pour indenter dans la description
@@ -291,6 +387,29 @@ export default function NouvelAppelOffre() {
         throw new Error('La durée estimée doit être supérieure à 0')
       }
 
+      // Validation des dates
+      if (!formData.dateDebut || !formData.dateFin || !formData.delai) {
+        throw new Error('Toutes les dates sont requises')
+      }
+
+      const dateDebut = new Date(formData.dateDebut)
+      const dateFin = new Date(formData.dateFin)
+      const delai = new Date(formData.delai)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Réinitialiser l'heure pour la comparaison
+
+      if (dateDebut <= today) {
+        throw new Error('La date de début doit être dans le futur')
+      }
+
+      if (dateFin <= dateDebut) {
+        throw new Error('La date de fin doit être après la date de début')
+      }
+
+      if (delai <= today) {
+        throw new Error('La date limite de candidature doit être dans le futur')
+      }
+
       // Préparer les infos additionnelles
       const infosAdditionnelles: { [key: string]: string } = {}
       additionalFields.forEach(field => {
@@ -303,7 +422,8 @@ export default function NouvelAppelOffre() {
         ...formData,
         prixMax: parseFloat(formData.prixMax),
         dureeEstimee: parseInt(formData.dureeEstimee),
-        infosAdditionnelles
+        infosAdditionnelles,
+        externalFilesLink: filesMode === 'link' ? externalFilesLink : null
       }
 
       const token = localStorage.getItem('token')
@@ -327,7 +447,7 @@ export default function NouvelAppelOffre() {
             if (image.file) {
               const imageFormData = new FormData()
               imageFormData.append('file', image.file)
-              imageFormData.append('projetId', result.id)
+              imageFormData.append('projetId', result.projet.id)
               imageFormData.append('title', image.title || '')
               imageFormData.append('description', image.description || '')
               imageFormData.append('type', image.type)
@@ -345,7 +465,7 @@ export default function NouvelAppelOffre() {
         }
         
         clearFormData()
-        router.push(`/donneur-ordre/projets/${result.id}`)
+        router.push(`/donneur-ordre/projets/${result.projet.id}`)
       } else {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Erreur lors de la création du projet')
@@ -368,6 +488,60 @@ export default function NouvelAppelOffre() {
   if (!user || (user.role !== 'DONNEUR_ORDRE' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
     router.push('/login')
     return null
+  }
+
+  if (checkingDocuments) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Vérification des documents...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (user.role === 'DONNEUR_ORDRE' && verificationStatus === 'BLOCKED') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white shadow rounded-lg p-8">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100">
+                <svg className="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="mt-6 text-xl font-medium text-gray-900">
+                Documents d&apos;entreprise requis
+              </h3>
+              <p className="mt-4 text-gray-600 max-w-2xl mx-auto">
+                Pour pouvoir créer un appel d&apos;offre, vous devez d&apos;abord télécharger et faire valider vos documents d&apos;entreprise (Kbis et Attestation RC Pro).
+              </p>
+              <div className="mt-8 space-y-3">
+                <button
+                  onClick={() => router.push('/donneur-ordre/dashboard')}
+                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Aller uploader mes documents
+                </button>
+                <div>
+                  <button
+                    onClick={() => router.back()}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    Retour
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -402,6 +576,30 @@ export default function NouvelAppelOffre() {
             </svg>
             Vos données sont automatiquement sauvegardées localement
           </div>
+
+          {/* Alerte pour documents en attente */}
+          {verificationStatus === 'PENDING' && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">
+                    Documents en cours de validation
+                  </h3>
+                  <div className="mt-1 text-sm text-blue-700">
+                    <p>
+                      Vos documents d&apos;entreprise sont en cours de validation par notre équipe. 
+                      Vous pouvez créer votre appel d&apos;offre dès maintenant, il sera publié après validation de vos documents et modération de votre projet.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="max-w-none mx-auto">
@@ -588,7 +786,7 @@ export default function NouvelAppelOffre() {
                   Planning
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Définissez les dates importantes du projet.
+                  Définissez les dates importantes du projet. Seules les dates futures sont autorisées.
                 </p>
               </div>
               <div className="mt-5 md:mt-0 md:col-span-2">
@@ -603,6 +801,7 @@ export default function NouvelAppelOffre() {
                       id="dateDebut"
                       value={formData.dateDebut}
                       onChange={handleInputChange}
+                      min={getTomorrowDate()}
                       className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
                       required
                     />
@@ -618,6 +817,7 @@ export default function NouvelAppelOffre() {
                       id="dateFin"
                       value={formData.dateFin}
                       onChange={handleInputChange}
+                      min={getTomorrowDate()}
                       className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
                       required
                     />
@@ -633,6 +833,7 @@ export default function NouvelAppelOffre() {
                       id="delai"
                       value={formData.delai}
                       onChange={handleInputChange}
+                      min={getTomorrowDate()}
                       className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
                       required
                     />
@@ -786,11 +987,116 @@ export default function NouvelAppelOffre() {
                 </p>
               </div>
               <div className="mt-5 md:mt-0 md:col-span-2">
-                <ProjectImageUpload
-                  images={projectImages}
-                  onImagesChange={setProjectImages}
-                  disabled={loading || uploadingImages}
-                />
+                {/* Onglets pour choisir le mode */}
+                <div className="mb-6">
+                  <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex space-x-8">
+                      <button
+                        type="button"
+                        onClick={() => setFilesMode('upload')}
+                        className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                          filesMode === 'upload'
+                            ? 'border-red-500 text-red-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Upload direct
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFilesMode('link')}
+                        className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                          filesMode === 'link'
+                            ? 'border-red-500 text-red-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        Lien externe
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+
+                {/* Contenu selon le mode sélectionné */}
+                {filesMode === 'upload' ? (
+                  <div>
+                    <ProjectImageUpload
+                      images={projectImages}
+                      onImagesChange={setProjectImages}
+                      disabled={loading || uploadingImages}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lien de téléchargement
+                      </label>
+                      <input
+                        type="url"
+                        value={externalFilesLink}
+                        onChange={(e) => setExternalFilesLink(e.target.value)}
+                        placeholder="https://wetransfer.com/downloads/... ou https://www.swisstransfer.com/..."
+                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500"
+                      />
+                      <p className="mt-2 text-sm text-gray-500">
+                        Vous pouvez utiliser WeTransfer, SwissTransfer, Google Drive, Dropbox, ou tout autre service de partage de fichiers.
+                      </p>
+                    </div>
+                    
+                    {externalFilesLink && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-sm font-medium text-blue-800">
+                              Lien externe configuré
+                            </h3>
+                            <div className="mt-1 text-sm text-blue-700">
+                              <p>
+                                Les sous-traitants pourront accéder à vos fichiers via le lien fourni. 
+                                Assurez-vous que le lien reste accessible pendant toute la durée de l&apos;appel d&apos;offre.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-yellow-800">
+                            Conseils pour le lien externe
+                          </h3>
+                          <div className="mt-1 text-sm text-yellow-700">
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Utilisez un service fiable (WeTransfer, SwissTransfer, Google Drive, Dropbox)</li>
+                              <li>Vérifiez que le lien fonctionne avant de publier</li>
+                              <li>Assurez-vous que les fichiers restent disponibles pendant au moins 30 jours</li>
+                              <li>Incluez un mot de passe si nécessaire et mentionnez-le dans la description du projet</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -876,6 +1182,40 @@ export default function NouvelAppelOffre() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Lien externe preview */}
+                {filesMode === 'link' && externalFilesLink && (
+                  <div className="mt-6 border-t pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Fichiers externes</h3>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="text-sm font-medium text-blue-800">
+                            Lien de téléchargement des fichiers
+                          </h4>
+                          <div className="mt-1">
+                            <a 
+                              href={externalFilesLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
+                            >
+                              {externalFilesLink}
+                            </a>
+                          </div>
+                          <p className="text-xs text-blue-700 mt-2">
+                            Les sous-traitants pourront télécharger vos plans et photos via ce lien
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

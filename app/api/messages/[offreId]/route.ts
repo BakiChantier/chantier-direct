@@ -62,7 +62,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ off
           select: {
             id: true,
             nom: true,
-            prenom: true
+            prenom: true,
+            role: true
           }
         }
       },

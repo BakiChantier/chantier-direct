@@ -50,6 +50,7 @@ const TYPE_CHANTIER_OPTIONS = [
 export default function ProjetsPage() {
   const { user } = useUser()
   const router = useRouter()
+
   const [projets, setProjets] = useState<Projet[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -532,8 +533,17 @@ export default function ProjetsPage() {
               const isContractor = user?.role === 'SOUS_TRAITANT'
               const disabledForContractor = isContractor && verificationStatus !== 'VERIFIED'
               const handleClick = () => {
+                if (!user) {
+                  router.push('/register');
+                  return;
+                }
                 if (disabledForContractor) return
-                if (user?.role === 'DONNEUR_ORDRE' || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+                
+                // Vérifier si l'utilisateur est le créateur du projet
+                const isProjectOwner = user?.role === 'DONNEUR_ORDRE' && projet.donneurOrdre.id === user.id
+                const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+                
+                if (isProjectOwner || isAdmin) {
                   router.push(`/donneur-ordre/projets/${projet.id}`)
                 } else {
                   router.push(`/projets/${projet.id}`)
@@ -542,7 +552,7 @@ export default function ProjetsPage() {
               return (
               <div
                 key={projet.id}
-                className={`bg-white rounded-lg shadow transition-shadow ${disabledForContractor ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}
+                className={`bg-white rounded-lg shadow transition-shadow relative ${disabledForContractor ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}
                 onClick={handleClick}
                 title={disabledForContractor ? 'Action indisponible: documents en attente de validation' : ''}
               >
@@ -550,7 +560,7 @@ export default function ProjetsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xl font-semibold text-gray-900">
+                        <h3 className={`text-xl font-semibold text-gray-900 ${!user ? 'blur-sm select-none' : ''}`}>
                           {projet.titre}
                         </h3>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(projet.status)}`}>
@@ -611,7 +621,7 @@ export default function ProjetsPage() {
                           <p className="text-sm text-gray-500">
                             Date limite : {new Date(projet.delai).toLocaleDateString('fr-FR')}
                           </p>
-                          <p className="text-xs text-gray-400">
+                          <p className={`text-xs text-gray-400 ${!user ? 'blur-sm select-none' : ''}`}>
                             Par {projet.donneurOrdre.nomSociete || `${projet.donneurOrdre.prenom} ${projet.donneurOrdre.nom}`}
                           </p>
                         </div>
@@ -619,6 +629,23 @@ export default function ProjetsPage() {
                     </div>
                   </div>
                 </div>
+                {!user && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 rounded-lg">
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-900 mb-2">🔒 Connectez-vous pour voir ce projet</div>
+                      <div className="text-sm text-gray-600 mb-4">Créez un compte pour accéder aux détails des projets</div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push('/register');
+                        }}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      >
+                        S&apos;inscrire maintenant
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )})}
           </div>

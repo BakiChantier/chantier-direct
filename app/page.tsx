@@ -1,13 +1,24 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Shield, Zap, Users, CheckCircle, Building2, Search, Clock, MessageSquare, FileCheck, Globe, UserCheck, Timer, Send } from 'lucide-react';
+import { ArrowRight, Shield, Zap, Users, CheckCircle, Building2, Search, Clock, MessageSquare, FileCheck, Globe, UserCheck, Send } from 'lucide-react';
 import Link from 'next/link';
 import { FaFileContract, FaBuilding } from 'react-icons/fa';
+import { useUser } from '@/lib/user-context';
+import { useRouter } from 'next/navigation';
 
 export default function ChantierDirectHomepage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const [latestProjects, setLatestProjects] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const { user } = useUser();
+  const router = useRouter();
+
+  const handleProjectClick = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      router.push('/register');
+    }
+  };
 
   useEffect(() => {
     observerRef.current = new IntersectionObserver(
@@ -46,13 +57,6 @@ export default function ChantierDirectHomepage() {
     };
     fetchLatest();
   }, []);
-
-  const stats = [
-    { number: "2,500+", label: "Professionnels vérifiés" },
-    { number: "890+", label: "Projets réalisés" },
-    { number: "4.8/5", label: "Note moyenne" },
-    { number: "24h", label: "Temps moyen de réponse" }
-  ];
 
   const features = [
     {
@@ -129,7 +133,7 @@ export default function ChantierDirectHomepage() {
               
               <p className="text-lg sm:text-xl text-slate-600 mb-8 max-w-2xl mx-auto lg:mx-0">
                 La plateforme qui simplifie la mise en relation entre donneurs d&apos;ordre et sous-traitants qualifiés. 
-                <span className="font-semibold text-slate-700">Trouvez votre partenaire idéal en 2 minutes.</span>
+                <span className="font-semibold text-slate-700">Travaillez avec les pros du BTP.</span>
               </p>
               
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12 justify-center lg:justify-start">
@@ -144,14 +148,14 @@ export default function ChantierDirectHomepage() {
               </div>
               
               {/* Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+            {/*   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                 {stats.map((stat, index) => (
                   <div key={index} className="text-center">
                     <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">{stat.number}</div>
                     <div className="text-xs sm:text-sm text-slate-600">{stat.label}</div>
                   </div>
                 ))}
-              </div>
+              </div> */}
             </div>
             
             {/* Right Column - Visual */}
@@ -169,10 +173,17 @@ export default function ChantierDirectHomepage() {
                       <div className="text-sm text-slate-500">Aucun projet récent.</div>
                     ) : (
                       latestProjects.map((p) => (
-                        <Link key={p.id} href={`/projets/${p.id}`} className="block">
+                        <Link 
+                          key={p.id} 
+                          href={user ? `/projets/${p.id}` : '#'} 
+                          className="block relative"
+                          onClick={(e) => handleProjectClick(e)}
+                        >
                           <div className="bg-white rounded-lg p-3 sm:p-4 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-start justify-between mb-2 min-w-0">
-                              <div className="font-semibold text-slate-900 truncate flex-1 mr-2 text-sm sm:text-base">{p.titre || 'Projet'}</div>
+                              <div className={`font-semibold text-slate-900 truncate flex-1 mr-2 text-sm sm:text-base ${!user ? 'blur-sm select-none' : ''}`}>
+                                {p.titre || 'Projet'}
+                              </div>
                               {p.budgetMax ? (
                                 <div className="text-xs sm:text-sm font-medium text-blue-600 flex-shrink-0">{p.budgetMax}€</div>
                               ) : null}
@@ -182,8 +193,21 @@ export default function ChantierDirectHomepage() {
                             </div>
                             <div className="flex items-center gap-2 min-w-0">
                               <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
-                              <span className="text-xs sm:text-sm text-slate-600 truncate">Publié le {new Date(p.createdAt).toLocaleDateString()}</span>
+                              <span className={`text-xs sm:text-sm text-slate-600 truncate ${!user ? 'blur-sm select-none' : ''}`}>
+                                Publié le {new Date(p.createdAt).toLocaleDateString()}
+                                {p.donneurOrdre && (
+                                  <span className="ml-2">• Par {p.donneurOrdre.nomSociete || `${p.donneurOrdre.prenom} ${p.donneurOrdre.nom}`}</span>
+                                )}
+                              </span>
                             </div>
+                            {!user && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-lg">
+                                <div className="text-center">
+                                  <div className="text-sm font-medium text-slate-900 mb-1">🔒 Connectez-vous</div>
+                                  <div className="text-xs text-slate-600">pour voir les détails</div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </Link>
                       ))
@@ -216,13 +240,9 @@ export default function ChantierDirectHomepage() {
       <section className="py-20 bg-gradient-to-br from-blue-600 to-blue-700 text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center fade-in-on-scroll">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium mb-6">
-              <Timer className="h-4 w-4" />
-              Réponse ultra-rapide
-            </div>
             <h2 className="text-3xl sm:text-4xl font-bold mb-6">
               Postez un projet, recevez des offres 
-              <span className="block text-yellow-300">dès les 5 premières minutes</span>
+              <span className="block text-yellow-300">à des prix compétitifs</span>
             </h2>
             <p className="text-xl text-blue-100 mb-12 max-w-3xl mx-auto">
               Notre algorithme de matching connecte instantanément votre projet aux sous-traitants disponibles dans votre zone
@@ -256,10 +276,10 @@ export default function ChantierDirectHomepage() {
                   
                   <div className="flex items-center gap-4">
                     <div className="bg-green-400 text-green-900 w-10 h-10 rounded-full flex items-center justify-center font-bold">
-                      5&apos;
+                      10&apos;
                     </div>
                     <div>
-                      <div className="font-semibold">Premières offres</div>
+                      <div className="font-semibold">Proposition de Profils</div>
                       <div className="text-blue-100 text-sm">Les pros vous contactent</div>
                     </div>
                   </div>

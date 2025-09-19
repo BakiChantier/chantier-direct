@@ -42,6 +42,11 @@ export default function Header() {
       name: 'Documentation',
       href: '/documentation',
       current: pathname.startsWith('/documentation')
+    },
+    {
+      name: 'Contact',
+      href: '/contact',
+      current: pathname.startsWith('/contact')
     }
   ]
 

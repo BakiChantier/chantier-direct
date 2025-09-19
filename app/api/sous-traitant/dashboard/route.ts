@@ -36,13 +36,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Récupérer les projets recommandés (5 maximum)
+    // Récupérer les projets recommandés (plus que nécessaire pour filtrer après)
     // Projets ouverts qui correspondent aux expertises du sous-traitant
-    const projetsRecommandes = await prisma.projet.findMany({
+    const projetsRecommandesRaw = await prisma.projet.findMany({
       where: {
         status: 'OUVERT',
+        moderationStatus: 'VALIDATED', // Seuls les projets validés
         delai: {
-          gte: new Date() // Date limite non dépassée
+          gte: new Date() // Date limite non dépassée (inclut aujourd'hui)
         },
         typeChantier: {
           hasSome: user.expertises || []
@@ -76,8 +77,11 @@ export async function GET(request: NextRequest) {
           createdAt: 'desc'
         }
       ],
-      take: 5
+      take: 10 // Prendre plus pour filtrer après
     })
+
+    // Prendre les premiers projets (déjà filtrés par Prisma)
+    const projetsRecommandes = projetsRecommandesRaw.slice(0, 5)
 
     // Si pas assez de projets correspondant aux expertises, compléter avec d'autres projets ouverts
     let projetsComplements: typeof projetsRecommandes = []
@@ -85,11 +89,12 @@ export async function GET(request: NextRequest) {
       const nombreManquant = 5 - projetsRecommandes.length
       const projetsExistantsIds = projetsRecommandes.map(p => p.id)
 
-      projetsComplements = await prisma.projet.findMany({
+      const projetsComplementsRaw = await prisma.projet.findMany({
         where: {
           status: 'OUVERT',
+          moderationStatus: 'VALIDATED', // Seuls les projets validés
           delai: {
-            gte: new Date()
+            gte: new Date() // Date limite non dépassée (inclut aujourd'hui)
           },
           id: {
             notIn: projetsExistantsIds
@@ -120,8 +125,11 @@ export async function GET(request: NextRequest) {
         orderBy: {
           createdAt: 'desc'
         },
-        take: nombreManquant
+        take: nombreManquant * 2 // Prendre plus pour filtrer après
       })
+
+      // Prendre les projets complémentaires (déjà filtrés par Prisma)
+      projetsComplements = projetsComplementsRaw.slice(0, nombreManquant)
     }
 
     const tousProjetsSuggeres = [...projetsRecommandes, ...projetsComplements]

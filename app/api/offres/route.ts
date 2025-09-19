@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { sendOffreNotification } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,7 +56,18 @@ export async function POST(request: NextRequest) {
 
     // Vérifier que le projet existe et est ouvert
     const projet = await prisma.projet.findUnique({
-      where: { id: projetId }
+      where: { id: projetId },
+      include: {
+        donneurOrdre: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true,
+            email: true,
+            nomSociete: true
+          }
+        }
+      }
     })
 
     if (!projet) {
@@ -146,6 +158,41 @@ export async function POST(request: NextRequest) {
         contenu: `Nouvelle offre soumise pour le projet "${projet.titre}":\n\nPrix proposé: ${prixPropose.toLocaleString('fr-FR')} €\nDélai proposé: ${delaiPropose} jours\n\nMessage:\n${message}`
       }
     })
+
+    // Envoyer une notification email au donneur d'ordre
+    try {
+      await sendOffreNotification({
+        donneurOrdre: {
+          nom: projet.donneurOrdre.nom,
+          prenom: projet.donneurOrdre.prenom || '',
+          email: projet.donneurOrdre.email,
+          nomSociete: projet.donneurOrdre.nomSociete || undefined
+        },
+        sousTraitant: {
+          nom: user.nom,
+          prenom: user.prenom || '',
+          email: user.email,
+          nomSociete: user.nomSociete || undefined
+        },
+        projet: {
+          id: projet.id,
+          titre: projet.titre,
+          description: projet.description,
+          adresseChantier: projet.adresseChantier,
+          villeChantier: projet.villeChantier
+        },
+        offre: {
+          id: offre.id,
+          prix: parseFloat(prixPropose),
+          delai: parseInt(delaiPropose),
+          message: message.trim()
+        },
+        action: 'nouvelle'
+      })
+    } catch (emailError) {
+      console.error('Erreur lors de l\'envoi de la notification email:', emailError)
+      // On continue même si l'email échoue
+    }
 
     console.log('Offre créée:', offre.id)
 

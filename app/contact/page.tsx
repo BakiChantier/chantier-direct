@@ -5,13 +5,10 @@ import { useState } from 'react'
 export default function ContactPage() {
   const [formData, setFormData] = useState({
     nom: '',
-    prenom: '',
     email: '',
     telephone: '',
-    entreprise: '',
     sujet: '',
-    message: '',
-    typeContact: 'GENERAL' as 'GENERAL' | 'SUPPORT' | 'COMMERCIAL' | 'TECHNIQUE'
+    message: ''
   })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -45,13 +42,10 @@ export default function ContactPage() {
         setSuccess(true)
         setFormData({
           nom: '',
-          prenom: '',
           email: '',
           telephone: '',
-          entreprise: '',
           sujet: '',
-          message: '',
-          typeContact: 'GENERAL'
+          message: ''
         })
       } else {
         setError(data.error || 'Erreur lors de l\'envoi du message')
@@ -200,55 +194,20 @@ export default function ContactPage() {
                   )}
 
                   <div className="space-y-6 lg:space-y-8">
-                    {/* Type de contact */}
+                    {/* Nom */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Type de demande *
+                        Nom complet *
                       </label>
-                      <select
-                        name="typeContact"
-                        value={formData.typeContact}
+                      <input
+                        type="text"
+                        name="nom"
+                        value={formData.nom}
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors text-base"
-                      >
-                        <option value="GENERAL">Question générale</option>
-                        <option value="SUPPORT">Support technique</option>
-                        <option value="COMMERCIAL">Demande commerciale</option>
-                        <option value="TECHNIQUE">Assistance technique</option>
-                      </select>
-                    </div>
-
-                    {/* Nom et Prénom */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nom *
-                        </label>
-                        <input
-                          type="text"
-                          name="nom"
-                          value={formData.nom}
-                          onChange={handleInputChange}
-                          required
-                          className="w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors text-base"
-                          placeholder="Votre nom"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Prénom *
-                        </label>
-                        <input
-                          type="text"
-                          name="prenom"
-                          value={formData.prenom}
-                          onChange={handleInputChange}
-                          required
-                          className="w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors text-base"
-                          placeholder="Votre prénom"
-                        />
-                      </div>
+                        placeholder="Votre nom complet"
+                      />
                     </div>
 
                     {/* Email et Téléphone */}
@@ -282,35 +241,20 @@ export default function ContactPage() {
                       </div>
                     </div>
 
-                    {/* Entreprise et Sujet */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Entreprise
-                        </label>
-                        <input
-                          type="text"
-                          name="entreprise"
-                          value={formData.entreprise}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors text-base"
-                          placeholder="Nom de votre entreprise"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Sujet *
-                        </label>
-                        <input
-                          type="text"
-                          name="sujet"
-                          value={formData.sujet}
-                          onChange={handleInputChange}
-                          required
-                          className="w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors text-base"
-                          placeholder="Sujet de votre message"
-                        />
-                      </div>
+                    {/* Sujet */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sujet *
+                      </label>
+                      <input
+                        type="text"
+                        name="sujet"
+                        value={formData.sujet}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors text-base"
+                        placeholder="Sujet de votre message"
+                      />
                     </div>
 
                     {/* Message */}

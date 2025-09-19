@@ -13,6 +13,7 @@ interface User {
   email: string
   nomSociete?: string
   noteGlobale?: number
+  role: string
 }
 
 interface Offre {
@@ -71,7 +72,7 @@ interface Message {
   destinataireId: string
   lu: boolean
   createdAt: string
-  expediteur: Pick<User, 'id' | 'nom' | 'prenom'>
+  expediteur: Pick<User, 'id' | 'nom' | 'prenom' | 'role'>
 }
 
 export default function ProjetDetailPage() {
@@ -98,6 +99,8 @@ export default function ProjetDetailPage() {
   const [submittingEvaluation, setSubmittingEvaluation] = useState(false)
   const [showOffersList, setShowOffersList] = useState(true) // Pour mobile
   const [isMobile, setIsMobile] = useState(false)
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [offreToSelect, setOffreToSelect] = useState<Offre | null>(null)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -243,10 +246,13 @@ export default function ProjetDetailPage() {
     setSelectedOffre(null)
   }
 
-  const selectSousTraitant = async (offre: Offre) => {
-    if (!confirm(`Êtes-vous sûr de vouloir sélectionner ${offre.sousTraitant.prenom} ${offre.sousTraitant.nom} pour ce projet ?`)) {
-      return
-    }
+  const openConfirmationModal = (offre: Offre) => {
+    setOffreToSelect(offre)
+    setShowConfirmationModal(true)
+  }
+
+  const selectSousTraitant = async () => {
+    if (!offreToSelect) return
 
     try {
       const token = localStorage.getItem('token')
@@ -257,13 +263,15 @@ export default function ProjetDetailPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          offreId: offre.id
+          offreId: offreToSelect.id
         })
       })
 
       if (response.ok) {
         fetchProjetDetails()
-        notifications.contractorSelected(`${offre.sousTraitant.prenom} ${offre.sousTraitant.nom}`)
+        notifications.contractorSelected(`${offreToSelect.sousTraitant.prenom} ${offreToSelect.sousTraitant.nom}`)
+        setShowConfirmationModal(false)
+        setOffreToSelect(null)
       } else {
         const errorData = await response.json()
         notifications.saveError()
@@ -273,6 +281,9 @@ export default function ProjetDetailPage() {
       console.error('Erreur:', error)
       notifications.networkError()
       setError('Erreur de connexion')
+    } finally {
+      setShowConfirmationModal(false)
+      setOffreToSelect(null)
     }
   }
 
@@ -347,6 +358,17 @@ export default function ProjetDetailPage() {
       RETIREE: 'bg-gray-100 text-gray-800'
     }
     return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
+  }
+
+  const renderAdminBadge = (expediteur: Pick<User, 'id' | 'nom' | 'prenom' | 'role'>) => {
+    if (expediteur.role === 'ADMIN' || expediteur.role === 'SUPER_ADMIN') {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 ml-2">
+          👑 Admin
+        </span>
+      )
+    }
+    return null
   }
 
   if (isLoading || loading) {
@@ -653,7 +675,7 @@ export default function ProjetDetailPage() {
                     <div className="flex-shrink-0">
                       {selectedOffre.status === 'EN_ATTENTE' && (
                         <button
-                          onClick={() => selectSousTraitant(selectedOffre)}
+                          onClick={() => openConfirmationModal(selectedOffre)}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
                         >
                           ✓ Sélectionner
@@ -695,7 +717,10 @@ export default function ProjetDetailPage() {
                               : 'bg-white text-gray-900 border border-gray-200'
                           }`}
                         >
-                          <p className="text-sm break-words">{message.contenu}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm break-words">{message.contenu}</p>
+                            {message.expediteurId !== user?.id && renderAdminBadge(message.expediteur)}
+                          </div>
                           <p className={`text-xs mt-1 ${
                             message.expediteurId === user?.id ? 'text-red-100' : 'text-gray-500'
                           }`}>
@@ -764,7 +789,7 @@ export default function ProjetDetailPage() {
                                       {selectedOffre.status === 'EN_ATTENTE' && (
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => selectSousTraitant(selectedOffre)}
+                          onClick={() => openConfirmationModal(selectedOffre)}
                           className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
                         >
                           ✓ Sélectionner
@@ -791,7 +816,7 @@ export default function ProjetDetailPage() {
                     {selectedOffre.status === 'REFUSEE' && (
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => selectSousTraitant(selectedOffre)}
+                          onClick={() => openConfirmationModal(selectedOffre)}
                           className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                         >
                           ↻ Re-sélectionner
@@ -873,7 +898,10 @@ export default function ProjetDetailPage() {
                               : 'bg-gray-100 text-gray-900'
                           }`}
                         >
-                          <p className="text-sm break-words overflow-wrap-anywhere">{message.contenu}</p>
+                          <div className="flex items-start justify-between mb-1">
+                            <p className="text-sm break-words overflow-wrap-anywhere">{message.contenu}</p>
+                            {message.expediteurId !== user?.id && renderAdminBadge(message.expediteur)}
+                          </div>
                           <p className={`text-xs mt-1 ${
                             message.expediteurId === user?.id ? 'text-red-100' : 'text-gray-500'
                           }`}>
@@ -1066,6 +1094,103 @@ export default function ProjetDetailPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation pour sélectionner un prestataire */}
+      {showConfirmationModal && offreToSelect && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Sélectionner ce prestataire
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Cette action est irréversible
+                  </p>
+                </div>
+              </div>
+
+              {/* Contenu */}
+              <div className="mb-6">
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="h-12 w-12 bg-gray-300 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-gray-700">
+                        {offreToSelect.sousTraitant.prenom?.[0] || offreToSelect.sousTraitant.nom[0]}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-base font-medium text-gray-900">
+                        {offreToSelect.sousTraitant.nomSociete || `${offreToSelect.sousTraitant.prenom} ${offreToSelect.sousTraitant.nom}`}
+                      </p>
+                      {offreToSelect.sousTraitant.nomSociete && (
+                        <p className="text-sm text-gray-500">
+                          {offreToSelect.sousTraitant.prenom} {offreToSelect.sousTraitant.nom}
+                        </p>
+                      )}
+                      <div className="flex items-center space-x-4 mt-2">
+                        <span className="text-sm font-medium text-green-600">
+                          {offreToSelect.prixPropose.toLocaleString('fr-FR')} €
+                        </span>
+                        <span className="text-sm font-medium text-blue-600">
+                          {offreToSelect.delaiPropose} jours
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="text-sm text-gray-600">
+                  Êtes-vous sûr de vouloir sélectionner <strong>{offreToSelect.sousTraitant.prenom} {offreToSelect.sousTraitant.nom}</strong> pour ce projet ?
+                </p>
+                
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-4 w-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-2">
+                      <p className="text-xs text-yellow-800">
+                        Une fois sélectionné, ce prestataire sera le seul à pouvoir finaliser le projet. Toutes les autres offres seront automatiquement refusées.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowConfirmationModal(false)
+                    setOffreToSelect(null)
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={selectSousTraitant}
+                  className="flex-1 px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                >
+                  Confirmer la sélection
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -35,6 +35,13 @@ enum DocumentStatus {
   REJECTED
 }
 
+enum ContactRequestStatus {
+  PENDING
+  READ
+  REPLIED
+  CLOSED
+}
+
 enum TypeChantier {
   PLOMBERIE
   ELECTRICITE
@@ -78,6 +85,12 @@ enum OffreStatus {
   RETIREE
 }
 
+enum ModerationStatus {
+  PENDING
+  VALIDATED
+  REJECTED
+}
+
 // Statut public de vérification affiché sur les profils
 enum PublicVerificationStatus {
   VERIFIED
@@ -115,6 +128,7 @@ model User {
   // Relations
   documents        Document[]
   projets          Projet[]     // Projets créés (pour donneurs d'ordres)
+  projetsModerated Projet[]     @relation("ProjetModerator") // Projets modérés (pour admins)
   offres           Offre[]      // Offres soumises (pour sous-traitants)
   evaluations      Evaluation[] // Évaluations reçues
   evalueDonne      Evaluation[] @relation("EvaluateurRelation") // Évaluations données
@@ -126,6 +140,9 @@ model User {
   
   // Gestion des contacts (pour admins)
   assignedContacts Contact[]
+  
+  // Réponses aux demandes de contact (pour admins)
+  contactReponses ContactRequest[]
 
   @@map("users")
 }
@@ -178,12 +195,20 @@ model Projet {
   materiaux            String?
   acces                String?
   infosAdditionnelles  String?  // Champs personnalisés ajoutés par le donneur d'ordre
+  externalFilesLink    String?  // Lien externe pour les fichiers volumineux (WeTransfer, etc.)
+  
+  // Modération
+  moderationStatus     ModerationStatus @default(PENDING)
+  moderatedBy          String?          @db.ObjectId
+  moderatedAt          DateTime?
+  rejectionReason      String?
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   // Relations
   donneurOrdre User    @relation(fields: [donneurOrdreId], references: [id], onDelete: Cascade)
+  moderator    User?   @relation("ProjetModerator", fields: [moderatedBy], references: [id])
   offres       Offre[]
   evaluations  Evaluation[]
   images       ProjectImage[]
@@ -375,4 +400,25 @@ model ProjectImage {
   projet Projet @relation(fields: [projetId], references: [id], onDelete: Cascade)
 
   @@map("project_images")
+}
+
+// Demandes de contact
+model ContactRequest {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  nom         String
+  email       String
+  telephone   String?
+  sujet       String
+  message     String
+  status      ContactRequestStatus @default(PENDING)
+  reponse     String?
+  reponseAt   DateTime?
+  reponseBy   String?       @db.ObjectId
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  reponseUser User? @relation(fields: [reponseBy], references: [id])
+
+  @@map("contact_requests")
 }

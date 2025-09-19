@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@/lib/user-context'
 import { useRouter } from 'next/navigation'
+import FileUpload from '@/components/FileUpload'
+import { DONNEUR_ORDRE_DOCUMENTS } from '@/lib/document-types'
+import type { DocumentType } from '@prisma/client'
 
 interface Projet {
   id: string
@@ -17,6 +20,8 @@ interface Projet {
   dateFin: string
   delai: string
   createdAt: string
+  moderationStatus: 'PENDING' | 'VALIDATED' | 'REJECTED'
+  rejectionReason?: string
   _count: {
     offres: number
   }
@@ -46,6 +51,17 @@ export default function DonneurOrdreDashboard() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [projetToDelete, setProjetToDelete] = useState<Projet | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showRejectionModal, setShowRejectionModal] = useState(false)
+  const [selectedRejectedProjet, setSelectedRejectedProjet] = useState<Projet | null>(null)
+  
+  // États pour la vérification des documents
+  const [docsFromServer, setDocsFromServer] = useState<Array<{ type: string; status: string; fileName: string }>>([])
+  const [verificationStatus, setVerificationStatus] = useState<'VERIFIED' | 'PENDING' | 'BLOCKED'>('VERIFIED')
+  const [docFiles, setDocFiles] = useState<Record<DocumentType, File | null>>({} as Record<DocumentType, File | null>)
+  const [docUploading, setDocUploading] = useState<string | null>(null)
+  const [docError, setDocError] = useState('')
+  const [docSuccess, setDocSuccess] = useState('')
+  const [uploadedDocuments, setUploadedDocuments] = useState<Set<DocumentType>>(new Set())
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -55,6 +71,8 @@ export default function DonneurOrdreDashboard() {
         return
       }
       fetchDashboardData()
+      // Vérifier les documents pour les donneurs d'ordre
+      verifyDocuments().then(status => setVerificationStatus(status))
     } else if (!isLoading && !user) {
       // Aucun utilisateur: arrêter le loader et rediriger
       setLoadingData(false)
@@ -69,12 +87,22 @@ export default function DonneurOrdreDashboard() {
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
-      const response = await fetch('/api/donneur-ordre/dashboard', { headers })
+      const response = await fetch('/api/donneur-ordre/projets', { headers })
 
       if (response.ok) {
         const data = await response.json()
-        setProjets(data.projets)
-        setStats(data.stats)
+        const projets = data.projets
+        setProjets(projets)
+        
+        // Calculer les statistiques
+        const stats = {
+          totalProjets: projets.length,
+          projetsOuverts: projets.filter((p: Projet) => p.status === 'OUVERT').length,
+          projetsEnCours: projets.filter((p: Projet) => p.status === 'EN_COURS').length,
+          projetsTermines: projets.filter((p: Projet) => p.status === 'TERMINE').length,
+          totalOffres: projets.reduce((sum: number, p: Projet) => sum + p._count.offres, 0)
+        }
+        setStats(stats)
       } else {
         console.error('Erreur lors de la récupération des données:', response.status, await response.text())
       }
@@ -103,6 +131,24 @@ export default function DonneurOrdreDashboard() {
       ANNULE: 'Annulé'
     }
     return labels[status as keyof typeof labels] || status
+  }
+
+  const getModerationBadge = (moderationStatus: string) => {
+    const styles = {
+      PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      VALIDATED: 'bg-green-100 text-green-800 border-green-200',
+      REJECTED: 'bg-red-100 text-red-800 border-red-200'
+    }
+    return styles[moderationStatus as keyof typeof styles] || 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+
+  const getModerationLabel = (moderationStatus: string) => {
+    const labels = {
+      PENDING: 'En attente de validation',
+      VALIDATED: 'Validé',
+      REJECTED: 'Rejeté'
+    }
+    return labels[moderationStatus as keyof typeof labels] || moderationStatus
   }
 
   const cleanMarkdown = (text: string) => {
@@ -174,6 +220,98 @@ export default function DonneurOrdreDashboard() {
     setProjetToDelete(null)
   }
 
+  const openRejectionModal = (projet: Projet) => {
+    setSelectedRejectedProjet(projet)
+    setShowRejectionModal(true)
+  }
+
+  const verifyDocuments = async (): Promise<'VERIFIED' | 'PENDING' | 'BLOCKED'> => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const res = await fetch('/api/documents', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
+      })
+      if (!res.ok) return 'BLOCKED' // Par défaut, bloquer si on ne peut pas vérifier
+      const json = await res.json()
+      const list = (json?.data || []) as Array<{ type: string; status: string; fileName: string }>
+      setDocsFromServer(list)
+      const required = DONNEUR_ORDRE_DOCUMENTS.filter(d => d.required)
+      const statuses = required.map(cfg => list.find(d => d.type === cfg.type)?.status || 'MISSING')
+      if (statuses.every(s => s === 'APPROVED')) return 'VERIFIED'
+      if (statuses.some(s => s === 'REJECTED' || s === 'MISSING')) return 'BLOCKED'
+      return 'PENDING'
+    } catch {
+      return 'BLOCKED' // En cas d'erreur, bloquer par sécurité
+    }
+  }
+
+  const handleDocSelect = (documentType: DocumentType, file: File) => {
+    setDocFiles(prev => ({ ...prev, [documentType]: file }))
+  }
+
+  const handleUploadAllDocuments = async () => {
+    const filesToUpload = Object.entries(docFiles).filter(([file]) => file !== null)
+    
+    if (filesToUpload.length === 0) return
+
+    setDocUploading('BATCH')
+    setDocError('')
+    setDocSuccess('')
+
+    try {
+      let uploadedCount = 0
+      const failedUploads: string[] = []
+
+      for (const [documentType, file] of filesToUpload) {
+        if (!file) continue
+
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('documentType', documentType)
+
+        try {
+          const response = await fetch('/api/documents/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: formData
+          })
+
+          const data = await response.json()
+
+          if (data.success) {
+            uploadedCount++
+            setUploadedDocuments(prev => new Set([...prev, documentType as DocumentType]))
+          } else {
+            const docConfig = DONNEUR_ORDRE_DOCUMENTS.find(d => d.type === documentType)
+            failedUploads.push(docConfig?.label || documentType)
+          }
+        } catch (error) {
+          console.error('Erreur upload batch:', error)
+          const docConfig = DONNEUR_ORDRE_DOCUMENTS.find(d => d.type === documentType)
+          failedUploads.push(docConfig?.label || documentType)
+        }
+      }
+
+      if (uploadedCount > 0) {
+        setDocSuccess(`${uploadedCount} document(s) uploadé(s) avec succès !`)
+        // Revérifier le statut après upload
+        verifyDocuments().then(status => setVerificationStatus(status))
+      }
+      
+      if (failedUploads.length > 0) {
+        setDocError(`Erreur lors de l'upload de : ${failedUploads.join(', ')}`)
+      }
+
+    } catch (error) {
+      console.error('Erreur upload batch:', error)
+      setDocError('Erreur lors de l\'upload des documents')
+    } finally {
+      setDocUploading(null)
+    }
+  }
+
   if (isLoading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -194,6 +332,134 @@ export default function DonneurOrdreDashboard() {
             Gérez vos appels d&apos;offres et suivez vos projets
           </p>
         </div>
+
+        {/* Alerte vérification documents pour donneurs d'ordre non vérifiés */}
+        {verificationStatus === 'BLOCKED' && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-lg font-semibold text-yellow-800">Documents d&apos;entreprise requis</h3>
+                <p className="text-sm text-yellow-700 mt-1 mb-4">
+                  Pour pouvoir publier des appels d&apos;offres, vous devez d&apos;abord télécharger et faire valider vos documents d&apos;entreprise.
+                </p>
+                
+                <div className="space-y-4">
+                  {DONNEUR_ORDRE_DOCUMENTS.map((docConfig) => {
+                    const selectedFile = docFiles[docConfig.type]
+                    const isUploaded = uploadedDocuments.has(docConfig.type)
+                    const serverDoc = docsFromServer.find(d => d.type === docConfig.type)
+                    const isApproved = serverDoc?.status === 'APPROVED'
+                    const isPending = serverDoc?.status === 'PENDING'
+                    const isRejected = serverDoc?.status === 'REJECTED'
+                    const isUploading = docUploading === 'BATCH' && selectedFile
+
+                    return (
+                      <div key={docConfig.type} className={`border rounded-lg p-4 ${
+                        isApproved ? 'border-green-200 bg-green-50' : 
+                        isPending ? 'border-blue-200 bg-blue-50' :
+                        isRejected ? 'border-red-200 bg-red-50' :
+                        'border-yellow-200 bg-yellow-50'
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-medium text-gray-900">
+                            {docConfig.label}
+                            {docConfig.required && <span className="text-red-500 ml-1">*</span>}
+                          </div>
+                          {isApproved && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Validé
+                            </span>
+                          )}
+                          {isPending && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <svg className="animate-spin w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              En attente
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                              Rejeté
+                            </span>
+                          )}
+                          {isUploaded && !isApproved && !isPending && !isRejected && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Uploadé
+                            </span>
+                          )}
+                          {isUploading && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <svg className="animate-spin w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Upload...
+                            </span>
+                          )}
+                        </div>
+                        {docConfig.description && (
+                          <p className="text-xs text-gray-600 mb-3">{docConfig.description}</p>
+                        )}
+                        <FileUpload
+                          onFileSelect={(file) => handleDocSelect(docConfig.type, file)}
+                          disabled={docUploading === 'BATCH' || isApproved}
+                          currentFile={selectedFile?.name || (isApproved ? serverDoc?.fileName : undefined)}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {docError && <div className="mt-4 text-sm text-red-700 bg-red-100 p-3 rounded">{docError}</div>}
+                {docSuccess && <div className="mt-4 text-sm text-green-700 bg-green-100 p-3 rounded">{docSuccess}</div>}
+
+                {/* Bouton pour uploader tous les documents */}
+                {Object.values(docFiles).some(file => file !== null) && (
+                  <div className="mt-4">
+                    <button
+                      onClick={handleUploadAllDocuments}
+                      disabled={docUploading === 'BATCH'}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {docUploading === 'BATCH' ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Upload en cours...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          Uploader les Documents ({Object.values(docFiles).filter(file => file !== null).length})
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -311,15 +577,33 @@ export default function DonneurOrdreDashboard() {
         {/* Actions et Onglets Statuts */}
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex justify-between items-center">
-            <button
-              onClick={() => router.push('/donneur-ordre/projets/nouveau')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Nouvel Appel d&apos;Offre
-            </button>
+            <div className="flex flex-col">
+              <button
+                onClick={() => (verificationStatus === 'VERIFIED' || verificationStatus === 'PENDING') ? router.push('/donneur-ordre/projets/nouveau') : null}
+                disabled={verificationStatus === 'BLOCKED'}
+                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${
+                  verificationStatus === 'VERIFIED' || verificationStatus === 'PENDING'
+                    ? 'text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
+                    : 'text-gray-500 bg-gray-300 cursor-not-allowed'
+                }`}
+                title={verificationStatus === 'BLOCKED' ? 'Vous devez d\'abord uploader vos documents d\'entreprise' : ''}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Nouvel Appel d&apos;Offre
+              </button>
+              {verificationStatus === 'BLOCKED' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Documents d&apos;entreprise requis pour publier
+                </p>
+              )}
+              {verificationStatus === 'PENDING' && (
+                <p className="text-xs text-blue-600 mt-1">
+                  Documents en cours de validation
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -369,6 +653,8 @@ export default function DonneurOrdreDashboard() {
                   <div
                     className={`px-4 sm:px-6 py-4 hover:bg-gray-50 ${
                       projet.status === 'TERMINE' || projet.status === 'ANNULE' ? 'opacity-80' : ''
+                    } ${
+                      projet.moderationStatus === 'REJECTED' ? 'bg-red-50 border-l-4 border-red-400' : ''
                     }`}
                   >
                     {/* Layout mobile/tablet */}
@@ -379,13 +665,40 @@ export default function DonneurOrdreDashboard() {
                             <h3 className="text-base sm:text-lg font-medium text-gray-900 pr-2 leading-tight">
                               {projet.titre}
                             </h3>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusBadge(projet.status)}`}>
-                              {getStatusLabel(projet.status)}
-                            </span>
+                            <div className="flex flex-col space-y-1 flex-shrink-0">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(projet.status)}`}>
+                                {getStatusLabel(projet.status)}
+                              </span>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getModerationBadge(projet.moderationStatus)}`}>
+                                {getModerationLabel(projet.moderationStatus)}
+                              </span>
+                            </div>
                           </div>
                           <div className="mt-2 text-sm text-gray-500 line-clamp-2">
                             {cleanMarkdown(projet.description)}
                           </div>
+                          {projet.moderationStatus === 'REJECTED' && projet.rejectionReason && (
+                            <div className="mt-3 flex items-center justify-between p-3 bg-red-100 border border-red-300 rounded-md">
+                              <div className="flex items-center">
+                                <svg className="h-5 w-5 text-red-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium text-red-800">
+                                  Projet rejeté par l&apos;équipe de modération
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => openRejectionModal(projet)}
+                                className="inline-flex items-center px-3 py-1.5 bg-white border border-red-300 text-sm font-medium rounded-md text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                Voir la raison
+                              </button>
+                            </div>
+                          )}
                           <div className="mt-3 space-y-2">
                             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                               <span className="flex items-center">
@@ -445,11 +758,36 @@ export default function DonneurOrdreDashboard() {
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(projet.status)}`}>
                                 {getStatusLabel(projet.status)}
                               </span>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getModerationBadge(projet.moderationStatus)}`}>
+                                {getModerationLabel(projet.moderationStatus)}
+                              </span>
                             </div>
                           </div>
                           <div className="mt-2 flex items-center text-sm text-gray-500">
                             <span className="truncate">{cleanMarkdown(projet.description)}</span>
                           </div>
+                          {projet.moderationStatus === 'REJECTED' && projet.rejectionReason && (
+                            <div className="mt-3 flex items-center justify-between p-3 bg-red-100 border border-red-300 rounded-md">
+                              <div className="flex items-center">
+                                <svg className="h-5 w-5 text-red-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-medium text-red-800">
+                                  Projet rejeté par l&apos;équipe de modération
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => openRejectionModal(projet)}
+                                className="inline-flex items-center px-3 py-1.5 bg-white border border-red-300 text-sm font-medium rounded-md text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                Voir la raison
+                              </button>
+                            </div>
+                          )}
                           <div className="mt-2 flex items-center justify-between">
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
                               <span>📍 {projet.villeChantier}</span>
@@ -552,6 +890,90 @@ export default function DonneurOrdreDashboard() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de raison de rejet */}
+      {showRejectionModal && selectedRejectedProjet && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative mx-auto p-6 border max-w-3xl w-full shadow-xl rounded-lg bg-white">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl font-medium text-gray-900">
+                  Projet rejeté
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedRejectedProjet.titre}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRejectionModal(false)
+                  setSelectedRejectedProjet(null)
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h3 className="text-lg font-medium text-red-800 mb-3">
+                      Raison du rejet par l&apos;équipe de modération
+                    </h3>
+                    <div className="bg-white p-4 rounded-lg border border-red-200 shadow-sm">
+                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-gray-800">
+                        {selectedRejectedProjet.rejectionReason}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h4 className="text-sm font-medium text-blue-800">
+                      Que faire maintenant ?
+                    </h4>
+                    <div className="mt-1 text-sm text-blue-700">
+                      <p>
+                        Prenez en compte les remarques de notre équipe et créez un nouveau projet corrigé. 
+                        Vous pouvez supprimer ce projet rejeté et en créer un nouveau qui respecte nos guidelines.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowRejectionModal(false)
+                  setSelectedRejectedProjet(null)
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Fermer
+              </button>
             </div>
           </div>
         </div>

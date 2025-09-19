@@ -1,139 +1,107 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser, isAdmin } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser, hasRole } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { Role } from '@prisma/client';
+import { sendNouveauProjetNotification } from '@/lib/email';
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getCurrentUser(request);
+    
+    if (!user || !hasRole(user, Role.DONNEUR_ORDRE)) {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const moderationStatus = searchParams.get('moderationStatus');
+
+    // Construire le filtre
+    const where: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
+      donneurOrdreId: user.id
+    };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (moderationStatus) {
+      where.moderationStatus = moderationStatus;
+    }
+
+    // Récupérer les projets du donneur d'ordre
+    const projets = await prisma.projet.findMany({
+      where,
+      include: {
+        _count: {
+          select: {
+            offres: true
+          }
+        },
+        images: {
+          take: 1 // Première image pour l'aperçu
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return NextResponse.json({ projets });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération des projets du donneur d\'ordre:', error);
+    return NextResponse.json(
+      { error: 'Erreur lors de la récupération des projets' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser(request)
+    const user = await getCurrentUser(request);
     
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Non autorisé' },
-        { status: 401 }
-      )
+    if (!user || !hasRole(user, Role.DONNEUR_ORDRE)) {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Vérifier les permissions (donneur d'ordre ou admin)
-    if (user.role !== 'DONNEUR_ORDRE' && !isAdmin(user)) {
-      return NextResponse.json(
-        { error: 'Accès refusé' },
-        { status: 403 }
-      )
-    }
-
-    const body = await request.json()
+    const data = await request.json();
     
-    const {
-      titre,
-      description,
-      typeChantier,
-      prixMax,
-      dureeEstimee,
-      adresseChantier,
-      villeChantier,
-      codePostalChantier,
-      dateDebut,
-      dateFin,
-      delai,
-      requisTechniques,
-      materiaux,
-      acces,
-      infosAdditionnelles
-    } = body
-
-    // Validation des champs obligatoires
-    if (!titre || !description || !typeChantier || typeChantier.length === 0) {
-      return NextResponse.json(
-        { error: 'Les champs titre, description et type de chantier sont obligatoires' },
-        { status: 400 }
-      )
+    // Validation des données requises
+    if (!data.titre || !data.description || !data.typeChantier || data.typeChantier.length === 0) {
+      return NextResponse.json({ error: 'Titre, description et types de chantier sont requis' }, { status: 400 });
     }
 
-    if (!prixMax || prixMax <= 0) {
-      return NextResponse.json(
-        { error: 'Le prix maximum doit être supérieur à 0' },
-        { status: 400 }
-      )
+    if (!data.prixMax || data.prixMax <= 0) {
+      return NextResponse.json({ error: 'Prix maximum invalide' }, { status: 400 });
     }
 
-    if (!dureeEstimee || dureeEstimee <= 0) {
-      return NextResponse.json(
-        { error: 'La durée estimée doit être supérieure à 0' },
-        { status: 400 }
-      )
-    }
-
-    if (!adresseChantier || !villeChantier || !codePostalChantier) {
-      return NextResponse.json(
-        { error: 'L\'adresse du chantier est obligatoire' },
-        { status: 400 }
-      )
-    }
-
-    if (!dateDebut || !dateFin || !delai) {
-      return NextResponse.json(
-        { error: 'Les dates sont obligatoires' },
-        { status: 400 }
-      )
-    }
-
-    // Validation des dates
-    const dateDebutObj = new Date(dateDebut)
-    const dateFinObj = new Date(dateFin)
-    const delaiObj = new Date(delai)
-    const now = new Date()
-
-    if (delaiObj <= now) {
-      return NextResponse.json(
-        { error: 'La date limite de candidature doit être dans le futur' },
-        { status: 400 }
-      )
-    }
-
-    if (dateDebutObj <= delaiObj) {
-      return NextResponse.json(
-        { error: 'La date de début doit être après la date limite de candidature' },
-        { status: 400 }
-      )
-    }
-
-    if (dateFinObj <= dateDebutObj) {
-      return NextResponse.json(
-        { error: 'La date de fin doit être après la date de début' },
-        { status: 400 }
-      )
-    }
-
-    // Convertir les informations additionnelles en texte
-    let infosAdditionnellesText = ''
-    if (infosAdditionnelles && typeof infosAdditionnelles === 'object') {
-      const infosArray = Object.entries(infosAdditionnelles)
-        .filter(([key, value]) => key && value)
-        .map(([key, value]) => `${key}: ${value}`)
-      infosAdditionnellesText = infosArray.join('\n')
+    if (!data.dureeEstimee || data.dureeEstimee <= 0) {
+      return NextResponse.json({ error: 'Durée estimée invalide' }, { status: 400 });
     }
 
     // Créer le projet
     const projet = await prisma.projet.create({
       data: {
         donneurOrdreId: user.id,
-        titre,
-        description,
-        typeChantier,
-        prixMax: parseFloat(prixMax),
-        dureeEstimee: parseInt(dureeEstimee),
-        status: 'OUVERT',
-        adresseChantier,
-        villeChantier,
-        codePostalChantier,
-        dateDebut: new Date(dateDebut),
-        dateFin: new Date(dateFin),
-        delai: new Date(delai),
-        requisTechniques: requisTechniques || '',
-        materiaux: materiaux || '',
-        acces: acces || '',
-        // Stocker les infos additionnelles dans un champ text séparé
-        infosAdditionnelles: infosAdditionnellesText
+        titre: data.titre,
+        description: data.description,
+        typeChantier: data.typeChantier,
+        prixMax: data.prixMax,
+        dureeEstimee: data.dureeEstimee,
+        adresseChantier: data.adresseChantier,
+        villeChantier: data.villeChantier,
+        codePostalChantier: data.codePostalChantier,
+        dateDebut: new Date(data.dateDebut),
+        dateFin: new Date(data.dateFin),
+        delai: new Date(data.delai),
+        requisTechniques: data.requisTechniques || null,
+        materiaux: data.materiaux || null,
+        acces: data.acces || null,
+        infosAdditionnelles: data.infosAdditionnelles ? JSON.stringify(data.infosAdditionnelles) : null,
+        externalFilesLink: data.externalFilesLink || null,
+        // Le statut de modération est PENDING par défaut
       },
       include: {
         donneurOrdre: {
@@ -141,88 +109,76 @@ export async function POST(request: NextRequest) {
             id: true,
             nom: true,
             prenom: true,
-            email: true,
             nomSociete: true
-          }
-        },
-        _count: {
-          select: {
-            offres: true
           }
         }
       }
-    })
+    });
 
-    console.log('Projet créé:', projet.id)
+    // Envoyer des notifications aux sous-traitants correspondants
+    try {
+      // Trouver les sous-traitants qui ont des expertises correspondantes
+      const sousTraitants = await prisma.user.findMany({
+        where: {
+          role: 'SOUS_TRAITANT',
+          isActive: true,
+          expertises: {
+            hasSome: data.typeChantier
+          }
+        },
+        select: {
+          id: true,
+          nom: true,
+          prenom: true,
+          email: true,
+          nomSociete: true
+        }
+      })
 
-    return NextResponse.json({
-      id: projet.id,
-      message: 'Projet créé avec succès',
-      projet
-    })
+      // Envoyer les notifications en parallèle (limité à 10 pour éviter le spam)
+      const notificationsPromises = sousTraitants.slice(0, 10).map(sousTraitant =>
+        sendNouveauProjetNotification({
+          donneurOrdre: {
+            nom: user.nom,
+            prenom: user.prenom || '',
+            nomSociete: user.nomSociete || undefined
+          },
+          projet: {
+            id: projet.id,
+            titre: projet.titre,
+            description: projet.description,
+            adresseChantier: projet.adresseChantier,
+            villeChantier: projet.villeChantier,
+            prixMax: projet.prixMax,
+            typeChantier: data.typeChantier
+          },
+          sousTraitant: {
+            nom: sousTraitant.nom,
+            prenom: sousTraitant.prenom || '',
+            email: sousTraitant.email
+          }
+        }).catch(error => {
+          console.error(`Erreur notification nouveau projet pour ${sousTraitant.email}:`, error)
+        })
+      )
+
+      await Promise.all(notificationsPromises)
+      console.log(`Notifications envoyées à ${Math.min(sousTraitants.length, 10)} sous-traitants`)
+    } catch (emailError) {
+      console.error('Erreur lors de l\'envoi des notifications de nouveau projet:', emailError)
+      // On continue même si les emails échouent
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      projet 
+    });
 
   } catch (error) {
-    console.error('Erreur création projet:', error)
+    console.error('Erreur lors de la création du projet:', error);
     return NextResponse.json(
-      { error: 'Erreur serveur lors de la création du projet' },
+      { error: 'Erreur lors de la création du projet' },
       { status: 500 }
-    )
+    );
   }
 }
-
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getCurrentUser(request)
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Non autorisé' },
-        { status: 401 }
-      )
-    }
-
-    // Vérifier les permissions
-    if (user.role !== 'DONNEUR_ORDRE' && !isAdmin(user)) {
-      return NextResponse.json(
-        { error: 'Accès refusé' },
-        { status: 403 }
-      )
-    }
-
-    // Pour les admins, on peut voir tous les projets
-    // Pour les donneurs d'ordres, seulement leurs projets
-    const whereClause = isAdmin(user) ? {} : { donneurOrdreId: user.id }
-
-    const projets = await prisma.projet.findMany({
-      where: whereClause,
-      include: {
-        donneurOrdre: {
-          select: {
-            id: true,
-            nom: true,
-            prenom: true,
-            email: true,
-            nomSociete: true
-          }
-        },
-        _count: {
-          select: {
-            offres: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
-
-    return NextResponse.json({ projets })
-
-  } catch (error) {
-    console.error('Erreur récupération projets:', error)
-    return NextResponse.json(
-      { error: 'Erreur serveur' },
-      { status: 500 }
-    )
-  }
-} 

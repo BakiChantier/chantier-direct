@@ -36,12 +36,13 @@ export default function ProjectImageUpload({
     Array.from(files).forEach((file) => {
       if (images.length + newImages.length >= maxImages) return
       
-      if (file.type.startsWith('image/')) {
+      // Accepter les images ET les PDF
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         const url = URL.createObjectURL(file)
         newImages.push({
           url,
           title: file.name,
-          type: 'PHOTO',
+          type: file.type === 'application/pdf' ? 'SCHEMA' : 'PHOTO', // Par défaut, PDF = schéma
           file
         })
       }
@@ -77,6 +78,14 @@ export default function ProjectImageUpload({
     const newImages = [...images]
     newImages[index] = { ...newImages[index], [field]: value }
     onImagesChange(newImages)
+  }
+
+  const isPdfFile = (image: ProjectImage) => {
+    // Vérifier si c'est un PDF par le type MIME ou l'extension du fichier
+    if (image.file) {
+      return image.file.type === 'application/pdf'
+    }
+    return image.url.toLowerCase().includes('.pdf') || image.title?.toLowerCase().endsWith('.pdf')
   }
 
   const moveImage = (fromIndex: number, toIndex: number) => {
@@ -140,17 +149,28 @@ export default function ProjectImageUpload({
             {images.map((image, index) => (
               <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex items-start space-x-4">
-                  {/* Aperçu de l'image */}
+                  {/* Aperçu de l'image ou PDF */}
                   <div className="flex-shrink-0">
                     <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                       {image.url ? (
-                        <Image 
-                          src={image.url} 
-                          alt={image.title || 'Image du projet'}
-                          className="w-full h-full object-cover"
-                          width={250}
-                          height={250}
-                        />
+                        isPdfFile(image) ? (
+                          // Affichage pour PDF
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-red-50">
+                            <svg className="w-8 h-8 text-red-500 mb-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-xs text-red-600 font-medium">PDF</span>
+                          </div>
+                        ) : (
+                          // Affichage pour images
+                          <Image 
+                            src={image.url} 
+                            alt={image.title || 'Image du projet'}
+                            className="w-full h-full object-cover"
+                            width={250}
+                            height={250}
+                          />
+                        )
                       ) : (
                         <ImageIcon className="w-8 h-8 text-gray-400" />
                       )}
@@ -206,6 +226,20 @@ export default function ProjectImageUpload({
 
                   {/* Actions */}
                   <div className="flex-shrink-0 flex flex-col space-y-2">
+                    {/* Bouton de téléchargement pour PDF */}
+                    {isPdfFile(image) && (
+                      <a
+                        href={image.url}
+                        download={image.title || 'document.pdf'}
+                        className="p-1 text-blue-500 hover:text-blue-700"
+                        title="Télécharger le PDF"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </a>
+                    )}
+
                     {/* Boutons de réorganisation */}
                     {index > 0 && (
                       <button

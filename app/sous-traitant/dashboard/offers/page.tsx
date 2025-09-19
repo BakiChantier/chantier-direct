@@ -10,6 +10,7 @@ interface User {
   prenom: string
   email: string
   nomSociete?: string
+  role: string
 }
 
 interface Offre {
@@ -48,7 +49,7 @@ interface Message {
   destinataireId: string
   lu: boolean
   createdAt: string
-  expediteur: Pick<User, 'id' | 'nom' | 'prenom'>
+  expediteur: Pick<User, 'id' | 'nom' | 'prenom' | 'role'>
 }
 
 const TYPE_CHANTIER_OPTIONS = [
@@ -210,6 +211,17 @@ export default function SousTraitantOffersPage() {
     return labels[status as keyof typeof labels] || status
   }
 
+  const renderAdminBadge = (expediteur: Pick<User, 'id' | 'nom' | 'prenom' | 'role'>) => {
+    if (expediteur.role === 'ADMIN' || expediteur.role === 'SUPER_ADMIN') {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 ml-2">
+          👑 Admin
+        </span>
+      )
+    }
+    return null
+  }
+
   if (isLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -366,7 +378,10 @@ export default function SousTraitantOffersPage() {
                               : 'bg-white text-gray-900 border border-gray-200'
                           }`}
                         >
-                          <p className="text-sm break-words">{message.contenu}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm break-words">{message.contenu}</p>
+                            {message.expediteurId !== user?.id && renderAdminBadge(message.expediteur)}
+                          </div>
                           <p className={`text-xs mt-1 ${
                             message.expediteurId === user?.id ? 'text-red-100' : 'text-gray-500'
                           }`}>
@@ -592,7 +607,10 @@ export default function SousTraitantOffersPage() {
                                 : 'bg-gray-100 text-gray-900'
                             }`}
                           >
-                            <p className="text-sm break-words overflow-wrap-anywhere">{message.contenu}</p>
+                            <div className="flex items-start justify-between mb-1">
+                              <p className="text-sm break-words overflow-wrap-anywhere">{message.contenu}</p>
+                              {message.expediteurId !== user?.id && renderAdminBadge(message.expediteur)}
+                            </div>
                             <p className={`text-xs mt-1 ${
                               message.expediteurId === user?.id ? 'text-red-100' : 'text-gray-500'
                             }`}>

@@ -45,11 +45,21 @@ interface Projet {
   materiaux?: string
   acces?: string
   infosAdditionnelles?: string
+  externalFilesLink?: string
   createdAt: string
   donneurOrdre: User
   userAlreadyApplied?: boolean
   offres?: Offre[]
   images?: ProjectImage[]
+  offresStats?: {
+    totalOffres: number
+    prixMin: number
+    prixMax: number
+    prixMoyen: number
+    delaiMin: number
+    delaiMax: number
+    delaiMoyen: number
+  } | null
 }
 
 const TYPE_CHANTIER_OPTIONS = [
@@ -177,6 +187,13 @@ export default function ProjetDetailSousTraitantPage() {
     fetchProjetDetails()
   }, [projetId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Rediriger les utilisateurs non connectés vers /register
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/register')
+    }
+  }, [user, loading, router])
+
   const fetchProjetDetails = async () => {
     try {
       const token = localStorage.getItem('token')
@@ -295,10 +312,14 @@ export default function ProjetDetailSousTraitantPage() {
     return TYPE_CHANTIER_OPTIONS.find(t => t.value === type)?.label || type
   }
 
-  const isDeadlinePassed = projet ? new Date(projet.delai) <= new Date() : false
-  const canSubmitOffre = user?.role === 'SOUS_TRAITANT' && !projet?.userAlreadyApplied && !isDeadlinePassed && projet?.status === 'OUVERT'
+  const isPdfFile = (image: ProjectImage) => {
+    // Vérifier si c'est un PDF par l'URL ou le nom du fichier
+    return image.url.toLowerCase().includes('.pdf') || image.title?.toLowerCase().endsWith('.pdf')
+  }
 
-  if (loading) {
+  const isDeadlinePassed = projet ? new Date(projet.delai) <= new Date() : false
+
+  if (loading || (!user && !error)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-red-600"></div>
@@ -423,9 +444,9 @@ export default function ProjetDetailSousTraitantPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Détails du projet */}
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Colonne de gauche : Détails du projet + Formulaire */}
+          <div className="space-y-6">
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Description du projet</h2>
               <div className="prose prose-sm max-w-none text-gray-700 mb-6" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
@@ -433,35 +454,89 @@ export default function ProjetDetailSousTraitantPage() {
               {/* Photos et plans */}
               {projet.images && projet.images.length > 0 && (
                 <div className="mb-8">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Photos et plans du projet</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Photos et documents du projet</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {projet.images.map((image) => (
-                      <div 
-                        key={image.id} 
-                        className="relative group cursor-pointer hover:scale-105 transition-transform"
-                        onClick={() => setSelectedImage(image)}
-                      >
-                        <Image 
-                          src={image.url}
-                          alt={image.description || image.title || 'Image du projet'}
-                          className="w-full h-32 object-cover rounded-lg border border-gray-200 hover:shadow-lg transition-shadow"
-                          width={500}
-                          height={500}
-                        />
-                        {/* Badge de type d'image */}
-                        <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded px-2 py-1">
-                          <div className="text-gray-800 text-xs font-medium">
-                            {image.type === 'PHOTO' ? '📷 Photo' : image.type === 'PLAN' ? '📋 Plan' : '📐 Schéma'}
+                      <div key={image.id} className="relative group">
+                        {isPdfFile(image) ? (
+                          // Affichage pour PDF
+                          <div 
+                            className="w-full h-32 bg-red-50 border border-red-200 rounded-lg flex flex-col items-center justify-center hover:bg-red-100 transition-colors cursor-pointer"
+                            onClick={() => window.open(image.url, '_blank')}
+                          >
+                            <svg className="w-8 h-8 text-red-500 mb-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-xs text-red-600 font-medium mb-2">PDF</span>
+                            <span className="text-xs text-red-700 text-center px-2">Cliquer pour ouvrir</span>
                           </div>
-                        </div>
-                        {/* Description au lieu du titre */}
-                        {image.description && (
-                          <div className="absolute bottom-2 left-2 right-2 bg-white bg-opacity-90 rounded px-2 py-1">
-                            <div className="text-gray-800 text-xs font-medium truncate">{image.description}</div>
+                        ) : (
+                          // Affichage pour images
+                          <div 
+                            className="relative group cursor-pointer hover:scale-105 transition-transform"
+                            onClick={() => setSelectedImage(image)}
+                          >
+                            <Image 
+                              src={image.url}
+                              alt={image.description || image.title || 'Image du projet'}
+                              className="w-full h-32 object-cover rounded-lg border border-gray-200 hover:shadow-lg transition-shadow"
+                              width={500}
+                              height={500}
+                            />
+                            {/* Badge de type d'image */}
+                            <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded px-2 py-1">
+                              <div className="text-gray-800 text-xs font-medium">
+                                {image.type === 'PHOTO' ? '📷 Photo' : image.type === 'PLAN' ? '📋 Plan' : '📐 Schéma'}
+                              </div>
+                            </div>
+                            {/* Description au lieu du titre */}
+                            {image.description && (
+                              <div className="absolute bottom-2 left-2 right-2 bg-white bg-opacity-90 rounded px-2 py-1">
+                                <div className="text-gray-800 text-xs font-medium truncate">{image.description}</div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lien externe pour les fichiers */}
+              {projet.externalFilesLink && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Fichiers du projet</h3>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-6 w-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                      </div>
+                      <div className="ml-4">
+                        <h4 className="text-base font-medium text-blue-900 mb-2">
+                          Plans et photos disponibles en téléchargement
+                        </h4>
+                        <p className="text-sm text-blue-700 mb-4">
+                          Le donneur d&apos;ordre a mis à disposition les fichiers du projet via un lien externe.
+                        </p>
+                        <a 
+                          href={projet.externalFilesLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Télécharger les fichiers
+                        </a>
+                        <p className="text-xs text-gray-600 mt-2">
+                          Lien externe - s&apos;ouvre dans un nouvel onglet
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -556,10 +631,43 @@ export default function ProjetDetailSousTraitantPage() {
                       </div>
                     )}
                     
-                    {projet.infosAdditionnelles && (
+                    {projet.infosAdditionnelles && projet.infosAdditionnelles !== '{}' && (
                       <div>
                         <span className="text-sm font-medium text-gray-500">Informations additionnelles :</span>
-                        <div className="text-sm text-gray-900 mt-1 whitespace-pre-line">{projet.infosAdditionnelles}</div>
+                        <div className="text-sm text-gray-900 mt-1">
+                          {(() => {
+                            try {
+                              const infos = JSON.parse(projet.infosAdditionnelles)
+                              const entries = Object.entries(infos)
+                              
+                              if (entries.length === 0) return null
+                              
+                              return (
+                                <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                                  {entries.map(([key, value]) => (
+                                    <div key={key} className="flex flex-col sm:flex-row">
+                                      <span className="font-medium text-gray-700 sm:min-w-[120px] sm:mr-3">
+                                        {key} :
+                                      </span>
+                                      <span className="text-gray-600 flex-1">
+                                        {value as string}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )
+                            } catch {
+                              // Fallback si ce n'est pas du JSON valide
+                              return (
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                  <div className="text-gray-600 whitespace-pre-line">
+                                    {projet.infosAdditionnelles}
+                                  </div>
+                                </div>
+                              )
+                            }
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -567,10 +675,9 @@ export default function ProjetDetailSousTraitantPage() {
               )}
             </div>
 
-            {/* Formulaire de soumission + Preview */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Soumettre une offre</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">Soumettre une offre</h2>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 {/* Formulaire */}
                 <form onSubmit={handleSubmitOffre} className={`space-y-6 order-2 lg:order-1 ${projet.userAlreadyApplied ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div>
@@ -722,8 +829,13 @@ export default function ProjetDetailSousTraitantPage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
+
+
+
+          {/* Colonne de droite : Card donneur d'ordre + Statistiques */}
+          <div className="space-y-6">
             {/* Informations donneur d'ordre */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Donneur d&apos;ordre</h3>
               <div className="flex items-center space-x-3">
                 <div className="h-12 w-12 bg-gray-300 rounded-full flex items-center justify-center">
@@ -740,53 +852,133 @@ export default function ProjetDetailSousTraitantPage() {
                       {projet.donneurOrdre.prenom} {projet.donneurOrdre.nom}
                     </p>
                   )}
-                  <a
-                    href={`/profil/${projet.donneurOrdre.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-flex items-center"
-                  >
-                    Voir le profil public
-                    <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Actions</h3>
-              {canSubmitOffre ? (
-                <p className="text-sm text-gray-600">Utilisez le formulaire “Soumettre une offre” ci‑dessous.</p>
-              ) : (
-                <div className="text-center py-2">
-                  {!user ? (
-                    <button
-                      onClick={() => router.push('/login')}
-                      className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
-                    >
-                      Se connecter
-                    </button>
-                  ) : user.role !== 'SOUS_TRAITANT' ? (
-                    <p className="text-sm text-gray-500">Seuls les sous-traitants peuvent soumettre des offres</p>
-                  ) : projet.userAlreadyApplied ? (
-                    <p className="text-sm text-gray-500">Vous avez déjà soumis une offre</p>
-                  ) : isDeadlinePassed ? (
-                    <p className="text-sm text-gray-500">Date limite dépassée</p>
-                  ) : (
-                    <p className="text-sm text-gray-500">Projet non disponible</p>
-                  )}
+            {/* Statistiques des offres concurrentes */}
+            {projet.offresStats && projet.offresStats.totalOffres > 0 ? (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 sticky top-24">
+                <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4" />
+                  </svg>
+                  Offres concurrentes
+                </h3>
+                <div className="text-center mb-4">
+                  <div className="text-2xl font-bold text-blue-600">{projet.offresStats.totalOffres}</div>
+                  <div className="text-xs text-blue-700">offre{projet.offresStats.totalOffres > 1 ? 's' : ''} soumise{projet.offresStats.totalOffres > 1 ? 's' : ''}</div>
                 </div>
-              )}
-            </div>
+                
+                <div className="space-y-4">
+                  {/* Offre la plus haute */}
+                  <div className="bg-white border border-red-200 rounded-lg p-4">
+                    <div className="flex items-center mb-3">
+                      <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                      <span className="text-sm font-medium text-red-800">Plus haute</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Prix :</span>
+                        <span className="font-semibold text-red-600">
+                          {projet.offresStats.prixMax.toLocaleString('fr-FR')} €
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Délai :</span>
+                        <span className="font-semibold text-red-600">
+                          {projet.offresStats.delaiMax} jours
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Offre la plus basse */}
+                  <div className="bg-white border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center mb-3">
+                      <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                      <span className="text-sm font-medium text-green-800">Plus basse</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Prix :</span>
+                        <span className="font-semibold text-green-600">
+                          {projet.offresStats.prixMin.toLocaleString('fr-FR')} €
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Délai :</span>
+                        <span className="font-semibold text-green-600">
+                          {projet.offresStats.delaiMin} jours
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Moyenne */}
+                  <div className="bg-white border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center mb-3">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                      <span className="text-sm font-medium text-blue-800">Moyenne</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Prix :</span>
+                        <span className="font-semibold text-blue-600">
+                          {Math.round(projet.offresStats.prixMoyen).toLocaleString('fr-FR')} €
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Délai :</span>
+                        <span className="font-semibold text-blue-600">
+                          {Math.round(projet.offresStats.delaiMoyen)} jours
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-4 w-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-2">
+                        <p className="text-xs text-yellow-800">
+                          <strong>💡 Conseil :</strong> Positionnez-vous de manière compétitive !
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 sticky top-24">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Première offre
+                </h3>
+                <div className="text-center">
+                  <div className="text-3xl mb-2">🎯</div>
+                  <p className="text-sm text-gray-600">
+                    Soyez le premier à soumettre une offre !
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Proposez vos meilleurs prix et délais.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
+
       {/* Modal de visualisation d'image */}
-      {selectedImage && (
+      {selectedImage && !isPdfFile(selectedImage) && (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
           <div className="relative max-w-7xl max-h-full">
             {/* Bouton fermer */}
@@ -836,6 +1028,7 @@ export default function ProjetDetailSousTraitantPage() {
           ></div>
         </div>
       )}
+      </div>
     </div>
   )
 } 

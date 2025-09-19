@@ -73,9 +73,21 @@ export async function GET(
       }
     }
 
+    // Calculer les statistiques des offres pour l'enchère descendante
+    const offresStats = projet.offres.length > 0 ? {
+      totalOffres: projet.offres.length,
+      prixMin: Math.min(...projet.offres.map(o => o.prixPropose)),
+      prixMax: Math.max(...projet.offres.map(o => o.prixPropose)),
+      prixMoyen: projet.offres.reduce((sum, o) => sum + o.prixPropose, 0) / projet.offres.length,
+      delaiMin: Math.min(...projet.offres.map(o => o.delaiPropose)),
+      delaiMax: Math.max(...projet.offres.map(o => o.delaiPropose)),
+      delaiMoyen: projet.offres.reduce((sum, o) => sum + o.delaiPropose, 0) / projet.offres.length
+    } : null
+
     return NextResponse.json({
       ...projet,
-      userAlreadyApplied
+      userAlreadyApplied,
+      offresStats
     })
 
   } catch (error) {

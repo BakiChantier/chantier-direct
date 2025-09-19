@@ -1,0 +1,20 @@
+Simuler Offre réelle avec vrais plans
+
+
+Résumé des Modifications Apportées : 
+- Appels d'Offre Innaccessibles pour les utilisateurs non connectés (on incite à s'inscrire)
+- Statistique ajoutée sur les pages d'appels d'offre (Offre & Délai la plus haute, Offre & Délai la plus basse, Moyenne Calculée sur la base de toute les offres pour inciter les prestataires à enchérir à la baisse)
+- Modération des appels d'offres aucun projet non validé ne sera affiché sur la plateforme 
+    - Si le projet est rejeté il y a un pop-up pour indiquer la ou les raisons.
+- Texte de la page principale plus orienté sur la confiance que sur le temps de réponse
+- Notifications améliorées
+- Notifications par Mail implémentées :
+    - DO reçoit les offres émises par les sous-traitant par mail
+    - ST reçoit les réponses, sélection, rejet à ses offres par mail
+    - DO Recoit la confirmation d'acceptation ou de rejet de son appel d'offre par mail
+    - Le formulaire de contact t'envoies une notif par mail et sur le site, tu peux répondre par mail ou directement sur le site (ce qui enverra un mail à la personne via le site)
+    - ST Reçoivent un mail quand une offre dans leur compétences est publiée par un DO 
+- Remis le lien de la page de contact
+- L'Admin peut maintenant intervenir dans les conversations entre DO & ST
+- Problèmes de Sécurité Réglés
+- Problème PDF réglé

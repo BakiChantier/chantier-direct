@@ -119,6 +119,9 @@ export default function Footer() {
             <p className="text-xs text-gray-500">
               Plateforme de mise en relation - N° d&apos;agrément : AGR-2024-001
             </p>
+            <Link href="https://www.oxelya.com" className="text-xs text-white">
+              Site Internet Créé par Oxelya
+            </Link>
           </div>
         </div>
       </div>

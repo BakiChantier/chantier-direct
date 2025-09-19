@@ -31,6 +31,7 @@ export default function RegisterDonneurOrdrePage() {
   const [documents, setDocuments] = useState<Record<DocumentType, File | null>>({} as Record<DocumentType, File | null>)
   const [uploading, setUploading] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState('')
+  const [uploadedDocuments, setUploadedDocuments] = useState<Set<DocumentType>>(new Set())
   const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,37 +135,62 @@ export default function RegisterDonneurOrdrePage() {
     }))
   }
 
-  const handleUploadDocument = async (documentType: DocumentType) => {
-    const file = documents[documentType]
-    if (!file || !token) return
+  const handleUploadAllDocuments = async () => {
+    const filesToUpload = Object.entries(documents).filter(([file]) => file !== null)
+    
+    if (filesToUpload.length === 0 || !token) return
 
-    setUploading(documentType)
+    setUploading('BATCH')
     setError('')
     setUploadSuccess('')
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('documentType', documentType)
+      let uploadedCount = 0
+      const failedUploads: string[] = []
 
-      const response = await fetch('/api/documents/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
+      for (const [documentType, file] of filesToUpload) {
+        if (!file) continue
 
-      const data = await response.json()
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('documentType', documentType)
 
-      if (data.success) {
-        setUploadSuccess(`Document uploadé avec succès !`)
-      } else {
-        setError(data.error || 'Erreur lors de l\'upload')
+        try {
+          const response = await fetch('/api/documents/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          })
+
+          const data = await response.json()
+
+          if (data.success) {
+            uploadedCount++
+            setUploadedDocuments(prev => new Set([...prev, documentType as DocumentType]))
+          } else {
+            const docConfig = DONNEUR_ORDRE_DOCUMENTS.find(d => d.type === documentType)
+            failedUploads.push(docConfig?.label || documentType)
+          }
+        } catch (error) {
+          console.error('Erreur upload batch:', error)
+          const docConfig = DONNEUR_ORDRE_DOCUMENTS.find(d => d.type === documentType)
+          failedUploads.push(docConfig?.label || documentType)
+        }
       }
+
+      if (uploadedCount > 0) {
+        setUploadSuccess(`${uploadedCount} document(s) uploadé(s) avec succès !`)
+      }
+      
+      if (failedUploads.length > 0) {
+        setError(`Erreur lors de l'upload de : ${failedUploads.join(', ')}`)
+      }
+
     } catch (error) {
-      console.error('Erreur upload:', error)
-      setError('Erreur lors de l\'upload du document')
+      console.error('Erreur upload batch:', error)
+      setError('Erreur lors de l\'upload des documents')
     } finally {
       setUploading(null)
     }
@@ -498,51 +524,80 @@ export default function RegisterDonneurOrdrePage() {
               <div className="space-y-6">
                 {DONNEUR_ORDRE_DOCUMENTS.map((docConfig: DocumentConfig) => {
                   const selectedFile = documents[docConfig.type]
-                  const isUploading = uploading === docConfig.type
+                  const isUploaded = uploadedDocuments.has(docConfig.type)
+                  const isUploading = uploading === 'BATCH' && selectedFile
 
                   return (
-                    <div key={docConfig.type} className="border border-gray-200 rounded-lg p-6">
+                    <div key={docConfig.type} className={`border rounded-lg p-6 ${
+                      isUploaded ? 'border-green-200 bg-green-50' : 'border-gray-200'
+                    }`}>
                       <div className="mb-4">
                         <h4 className="text-lg font-medium text-gray-900 flex items-center">
                           {docConfig.label}
                           {docConfig.required && <span className="ml-1 text-red-500">*</span>}
+                          {isUploaded && (
+                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Uploadé
+                            </span>
+                          )}
+                          {isUploading && (
+                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <svg className="animate-spin w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Upload...
+                            </span>
+                          )}
                         </h4>
                         {docConfig.description && (
                           <p className="text-sm text-gray-600 mt-1">{docConfig.description}</p>
                         )}
                       </div>
 
-                      <div className="space-y-4">
-                        <FileUpload
-                          onFileSelect={(file) => handleFileSelect(docConfig.type, file)}
-                          disabled={isUploading}
-                          currentFile={selectedFile?.name}
-                        />
-
-                        {selectedFile && (
-                          <button
-                            onClick={() => handleUploadDocument(docConfig.type)}
-                            disabled={isUploading}
-                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isUploading ? (
-                              <>
-                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Upload en cours...
-                              </>
-                            ) : (
-                              'Uploader ce document'
-                            )}
-                          </button>
-                        )}
-                      </div>
+                      <FileUpload
+                        onFileSelect={(file) => handleFileSelect(docConfig.type, file)}
+                        disabled={uploading === 'BATCH'}
+                        currentFile={selectedFile?.name}
+                      />
                     </div>
                   )
                 })}
               </div>
+
+              {/* Bouton pour uploader tous les documents */}
+              {Object.values(documents).some(file => file !== null) && (
+                <div className="pt-6">
+                  <button
+                    onClick={handleUploadAllDocuments}
+                    disabled={uploading === 'BATCH'}
+                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploading === 'BATCH' ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Upload en cours...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Uploader les Documents ({Object.values(documents).filter(file => file !== null).length})
+                      </>
+                    )}
+                  </button>
+                  <p className="mt-2 text-center text-xs text-gray-600">
+                    Uploadez tous vos documents sélectionnés en une seule fois
+                  </p>
+                </div>
+              )}
 
               {/* Bouton pour continuer */}
               <div className="pt-6">

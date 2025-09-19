@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { sendMessageNotification } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,11 +96,89 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             nom: true,
-            prenom: true
+            prenom: true,
+            nomSociete: true
           }
         }
       }
     })
+
+    // Envoyer une notification email au destinataire
+    try {
+      // Récupérer les informations complètes pour l'email
+      const offreWithDetails = await prisma.offre.findUnique({
+        where: { id: offreId },
+        include: {
+          projet: {
+            select: {
+              id: true,
+              titre: true,
+              description: true,
+              adresseChantier: true,
+              villeChantier: true
+            }
+          },
+          sousTraitant: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              email: true,
+              nomSociete: true
+            }
+          }
+        }
+      })
+
+      if (offreWithDetails) {
+        // Récupérer les informations du destinataire
+        const destinataire = await prisma.user.findUnique({
+          where: { id: destinataireId },
+          select: {
+            id: true,
+            nom: true,
+            prenom: true,
+            email: true,
+            nomSociete: true
+          }
+        })
+
+        if (destinataire) {
+          await sendMessageNotification({
+            destinataire: {
+              nom: destinataire.nom,
+              prenom: destinataire.prenom || '',
+              email: destinataire.email,
+              nomSociete: destinataire.nomSociete || undefined
+            },
+            expediteur: {
+              nom: nouveauMessage.expediteur.nom,
+              prenom: nouveauMessage.expediteur.prenom || '',
+              nomSociete: nouveauMessage.expediteur.nomSociete || undefined
+            },
+            projet: {
+              id: offreWithDetails.projet.id,
+              titre: offreWithDetails.projet.titre,
+              description: offreWithDetails.projet.description,
+              adresseChantier: offreWithDetails.projet.adresseChantier,
+              villeChantier: offreWithDetails.projet.villeChantier
+            },
+            offre: {
+              id: offreWithDetails.id,
+              prix: offreWithDetails.prixPropose,
+              delai: offreWithDetails.delaiPropose
+            },
+            message: {
+              contenu: nouveauMessage.contenu,
+              createdAt: nouveauMessage.createdAt
+            }
+          })
+        }
+      }
+    } catch (emailError) {
+      console.error('Erreur lors de l\'envoi de la notification email:', emailError)
+      // On continue même si l'email échoue, le message est quand même créé
+    }
 
     return NextResponse.json({
       success: true,
