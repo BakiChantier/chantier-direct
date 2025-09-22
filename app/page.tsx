@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 export default function ChantierDirectHomepage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const [latestProjects, setLatestProjects] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [stats, setStats] = useState<{ donneurs: number; sousTraitants: number; projetsEnCours: number; projetsTermines: number }>({ donneurs: 0, sousTraitants: 0, projetsEnCours: 0, projetsTermines: 0 });
   const { user } = useUser();
   const router = useRouter();
 
@@ -18,6 +19,23 @@ export default function ChantierDirectHomepage() {
       e.preventDefault();
       router.push('/register');
     }
+  };
+
+  const handlePrimaryCtaClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!user) {
+      router.push('/register/donneur-ordre');
+      return;
+    }
+    if (user.role === 'DONNEUR_ORDRE') {
+      router.push('/donneur-ordre/projets/nouveau');
+      return;
+    }
+    if (user.role === 'SOUS_TRAITANT') {
+      router.push('/projets');
+      return;
+    }
+    router.push('/donneur-ordre/projets/nouveau');
   };
 
   useEffect(() => {
@@ -56,6 +74,24 @@ export default function ChantierDirectHomepage() {
       }
     };
     fetchLatest();
+  }, []);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) {
+          return;
+        }
+        const json = await res.json();
+        if (json?.data) {
+          setStats(json.data);
+        }
+      } catch (e) {
+        console.error('Erreur lors de la récupération des stats:', e);
+      }
+    };
+    fetchStats();
   }, []);
 
   const features = [
@@ -137,10 +173,10 @@ export default function ChantierDirectHomepage() {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12 justify-center lg:justify-start">
-                <Link href="/annuaire" className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl min-w-0 flex-shrink">
-                  <span className="truncate">Je cherche des sous-traitants</span>
+                <button onClick={handlePrimaryCtaClick} className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl min-w-0 flex-shrink">
+                  <span className="truncate">Je veux poster un chantier</span>
                   <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                </Link>
+                </button>
                 <Link href="/projets" className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 hover:border-blue-300 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 min-w-0 flex-shrink">
                   <span className="truncate">Je cherche des chantiers</span>
                   <Search className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
@@ -232,6 +268,97 @@ export default function ChantierDirectHomepage() {
               </div>
             </div>
           </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it Works */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16 fade-in-on-scroll">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
+              Simple. Rapide. Efficace.
+            </h2>
+          </div>
+          
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Donneurs d'ordre */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 shadow-lg fade-in-on-scroll">
+              <div className="text-center mb-8">
+                <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Building2 className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900">Donneurs d&apos;ordre</h3>
+                <p className="text-slate-600">Trouvez vos sous-traitants idéaux</p>
+              </div>
+              
+              <div className="space-y-6">
+                {[
+                  { step: "1", title: "Publiez votre projet", desc: "Décrivez votre chantier en 2 minutes publiez vos plans, vos exigences, ainsi que vos budgets et délais" },
+                  { step: "2", title: "Recevez des offres", desc: "Les pros qualifiés vous contactent" },
+                  { step: "3", title: "Choisissez", desc: "Comparez et sélectionnez le meilleur" }
+                ].map((item, index) => (
+                  <div key={index} className="flex gap-4">
+                    <div className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+                      {item.step}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-slate-900">{item.title}</h4>
+                      <p className="text-slate-600 text-sm">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200 flex items-center justify-center">
+                  <Link href="/register/donneur-ordre" className="flex items-start gap-3">
+                    <FaBuilding className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-center gap-2">
+                      S&apos;inscrire comme donneur d&apos;ordre
+                      <ArrowRight className="h-5 w-5" />
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            </div>
+            
+            {/* Sous-traitants */}
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-8 shadow-lg fade-in-on-scroll">
+              <div className="text-center mb-8">
+                <div className="bg-green-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900">Sous-traitants</h3>
+                <p className="text-slate-600">Développez votre activité</p>
+              </div>
+              
+              <div className="space-y-6">
+                {[
+                  { step: "1", title: "Créez votre profil", desc: "Mettez en avant vos compétences, vos référence de chantier et vos tarifs" },
+                  { step: "2", title: "Trouvez des projets", desc: "Accédez aux chantiers près de chez vous grâce à nos recommandations ou via la recherche" },
+                  { step: "3", title: "Décrochez votre première mission", desc: "Proposez vos services et décrochez des contrats" }
+                ].map((item, index) => (
+                  <div key={index} className="flex gap-4">
+                    <div className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+                      {item.step}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-slate-900">{item.title}</h4>
+                      <p className="text-slate-600 text-sm">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="mt-8 p-4 bg-green-50 rounded-lg border border-green-200 flex items-center justify-center">
+                  <Link href="/register/sous-traitant" className="flex items-start gap-3">
+                    <FaFileContract className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-center gap-2">
+                      S&apos;inscrire comme sous-traitant
+                      <ArrowRight className="h-5 w-5" />
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -369,6 +496,66 @@ export default function ChantierDirectHomepage() {
       {/* Features Section */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Stat bubbles */}
+          <div className="mb-16 fade-in-on-scroll">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {/* Donneurs d'ordre */}
+                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200/60 shadow-[0_10px_30px_-15px_rgba(30,64,175,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(30,64,175,0.45)] transition-all">
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-200/40 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
+                      <Building2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-extrabold text-blue-900 leading-tight">{stats.donneurs.toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-blue-800/80">Donneurs d&apos;ordre</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sous-traitants */}
+                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200/60 shadow-[0_10px_30px_-15px_rgba(5,150,105,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(5,150,105,0.45)] transition-all">
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-emerald-200/40 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
+                      <Users className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-extrabold text-emerald-900 leading-tight">{stats.sousTraitants.toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-emerald-800/80">Sous-traitants</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Projets en cours */}
+                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200/60 shadow-[0_10px_30px_-15px_rgba(245,158,11,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(245,158,11,0.45)] transition-all">
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-amber-200/40 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
+                      <Clock className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-extrabold text-amber-900 leading-tight">{stats.projetsEnCours.toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-amber-800/80">Projets en cours</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Projets terminés */}
+                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200/60 shadow-[0_10px_30px_-15px_rgba(124,58,237,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(124,58,237,0.45)] transition-all">
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-violet-200/40 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-violet-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
+                      <CheckCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-extrabold text-violet-900 leading-tight">{stats.projetsTermines.toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-violet-800/80">Projets terminés</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           <div className="text-center mb-16 fade-in-on-scroll">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
               Pourquoi Chantier Direct ?
@@ -472,92 +659,130 @@ export default function ChantierDirectHomepage() {
         </div>
       </section>
 
-      {/* How it Works */}
-      <section className="py-20 bg-white">
+      {/* Guide Annuaire: Comment utiliser efficacement notre annuaire BTP ? */}
+      <section className="py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 fade-in-on-scroll">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Simple. Rapide. Efficace.
+              Comment utiliser efficacement notre annuaire BTP ?
             </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Maximisez vos chances de trouver les bons partenaires ou d&apos;être trouvé selon votre profil.
+            </p>
           </div>
-          
+
+          {/* Deux colonnes: Donneurs d'Ordre / Sous-Traitants */}
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Donneurs d'ordre */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 shadow-lg fade-in-on-scroll">
+            <div className="bg-white rounded-2xl p-8 shadow-lg fade-in-on-scroll">
               <div className="text-center mb-8">
                 <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Building2 className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">Donneurs d&apos;ordre</h3>
-                <p className="text-slate-600">Trouvez vos sous-traitants idéaux</p>
+                <h3 className="text-2xl font-bold text-slate-900">Pour les Donneurs d&apos;Ordre</h3>
               </div>
-              
               <div className="space-y-6">
-                {[
-                  { step: "1", title: "Publiez votre projet", desc: "Décrivez votre chantier en 2 minutes publiez vos plans, vos exigences, ainsi que vos budgets et délais" },
-                  { step: "2", title: "Recevez des offres", desc: "Les pros qualifiés vous contactent" },
-                  { step: "3", title: "Choisissez", desc: "Comparez et sélectionnez le meilleur" }
-                ].map((item, index) => (
-                  <div key={index} className="flex gap-4">
-                    <div className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
-                      {item.step}
-                    </div>
+                {[ 
+                  { step: '1', title: 'Recherchez par expertise', desc: 'Utilisez nos filtres avancés pour trouver des professionnels spécialisés : plomberie, électricité, maçonnerie, carrelage...' },
+                  { step: '2', title: 'Analysez les profils détaillés', desc: 'Consultez certifications, réalisations, évaluations clients et zones d\'intervention.' },
+                  { step: '3', title: 'Vérifiez les recommandations', desc: 'Lisez les avis, les notes de qualité et les références de projets similaires.' },
+                  { step: '4', title: 'Contactez directement', desc: 'Échangez avec les professionnels sélectionnés et obtenez des devis.' },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex gap-4">
+                    <div className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">{item.step}</div>
                     <div>
                       <h4 className="font-semibold text-slate-900">{item.title}</h4>
                       <p className="text-slate-600 text-sm">{item.desc}</p>
                     </div>
                   </div>
                 ))}
-
-                <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200 flex items-center justify-center">
-                  <Link href="/register/donneur-ordre" className="flex items-start gap-3">
-                    <FaBuilding className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex items-center gap-2">
-                      S&apos;inscrire comme donneur d&apos;ordre
-                      <ArrowRight className="h-5 w-5" />
-                    </div>
-                  </Link>
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="font-semibold text-slate-900 mb-2">Critères de sélection :</div>
+                  <ul className="list-disc pl-5 space-y-1 text-slate-700 text-sm">
+                    <li>Proximité géographique et zone d&apos;intervention</li>
+                    <li>Spécialisation et expertise technique</li>
+                    <li>Évaluations et recommandations clients</li>
+                    <li>Certifications et assurances professionnelles</li>
+                  </ul>
                 </div>
               </div>
             </div>
-            
+
             {/* Sous-traitants */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-8 shadow-lg fade-in-on-scroll">
+            <div className="bg-white rounded-2xl p-8 shadow-lg fade-in-on-scroll">
               <div className="text-center mb-8">
                 <div className="bg-green-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Users className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">Sous-traitants</h3>
-                <p className="text-slate-600">Développez votre activité</p>
+                <h3 className="text-2xl font-bold text-slate-900">Pour les Sous-Traitants</h3>
               </div>
-              
               <div className="space-y-6">
-                {[
-                  { step: "1", title: "Créez votre profil", desc: "Mettez en avant vos compétences, vos référence de chantier et vos tarifs" },
-                  { step: "2", title: "Trouvez des projets", desc: "Accédez aux chantiers près de chez vous grâce à nos recommandations ou via la recherche" },
-                  { step: "3", title: "Décrochez votre première mission", desc: "Proposez vos services et décrochez des contrats" }
-                ].map((item, index) => (
-                  <div key={index} className="flex gap-4">
-                    <div className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
-                      {item.step}
-                    </div>
+                {[ 
+                  { step: '1', title: 'Optimisez votre profil', desc: 'Ajoutez photos de réalisations, certifications, zones d\'intervention et spécialités.' },
+                  { step: '2', title: 'Collectez les évaluations', desc: 'Encouragez vos clients à laisser des avis positifs.' },
+                  { step: '3', title: 'Maintenez vos informations', desc: 'Mettez à jour disponibilités, tarifs, nouvelles certifications et références.' },
+                  { step: '4', title: 'Développez votre réseau', desc: 'Répondez rapidement, entretenez vos relations et participez à la communauté.' },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex gap-4">
+                    <div className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">{item.step}</div>
                     <div>
                       <h4 className="font-semibold text-slate-900">{item.title}</h4>
                       <p className="text-slate-600 text-sm">{item.desc}</p>
                     </div>
                   </div>
                 ))}
-
-                <div className="mt-8 p-4 bg-green-50 rounded-lg border border-green-200 flex items-center justify-center">
-                  <Link href="/register/sous-traitant" className="flex items-start gap-3">
-                    <FaFileContract className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex items-center gap-2">
-                      S&apos;inscrire comme sous-traitant
-                      <ArrowRight className="h-5 w-5" />
-                    </div>
-                  </Link>
+                <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="font-semibold text-slate-900 mb-2">Conseils de visibilité :</div>
+                  <ul className="list-disc pl-5 space-y-1 text-slate-700 text-sm">
+                    <li>Photos de qualité de vos réalisations</li>
+                    <li>Descriptions détaillées de vos services</li>
+                    <li>Réactivité dans les réponses aux demandes</li>
+                    <li>Mise à jour régulière de votre profil</li>
+                  </ul>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Spécialités BTP */}
+          <div className="mt-16 fade-in-on-scroll">
+            <h3 className="text-2xl font-bold text-slate-900 text-center mb-8">Spécialités BTP disponibles dans notre annuaire</h3>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {[
+                { emoji: '🔧', label: 'Plomberie' },
+                { emoji: '⚡', label: 'Électricité' },
+                { emoji: '🧱', label: 'Maçonnerie' },
+                { emoji: '🏠', label: 'Carrelage' },
+                { emoji: '🎨', label: 'Peinture' },
+                { emoji: '🪚', label: 'Menuiserie' },
+                { emoji: '🏘️', label: 'Couverture' },
+                { emoji: '❄️', label: 'Climatisation' },
+                { emoji: '🚜', label: 'Terrassement' },
+                { emoji: '🔨', label: 'Plaquiste' },
+              ].map((item, idx) => (
+                <div key={idx} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+                  <div className="text-2xl" aria-hidden>{item.emoji}</div>
+                  <div className="font-medium text-slate-800">{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Aide / Guide */}
+          <div className="mt-16 text-center fade-in-on-scroll">
+            <p className="text-slate-700 text-lg mb-6">
+              Besoin d&apos;aide pour optimiser votre recherche ou votre profil ?
+              Consultez notre guide complet d&apos;utilisation de l&apos;annuaire ou contactez notre équipe pour des conseils personnalisés.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/documentation" className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 hover:border-blue-300 px-6 py-3 rounded-lg font-semibold inline-flex items-center justify-center gap-2">
+                Guide d&apos;utilisation
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+              <Link href="/contact" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold inline-flex items-center justify-center gap-2">
+                Support personnalisé
+                <Send className="h-5 w-5" />
+              </Link>
             </div>
           </div>
         </div>

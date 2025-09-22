@@ -2,31 +2,28 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Building2, User, MapPin, Star } from 'lucide-react'
+import { Search, MapPin } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface SearchResult {
   id: string
-  type: 'project' | 'contractor'
   title: string
   description: string
   location?: string
   budget?: number
-  rating?: number
   expertise?: string[]
-  company?: string
-  avatar?: string
+  ownerId?: string
 }
 
 interface SearchBarProps {
   userRole?: 'DONNEUR_ORDRE' | 'SOUS_TRAITANT' | 'ADMIN' | 'SUPER_ADMIN' | null
+  userId?: string | null
   className?: string
 }
 
-export default function SearchBar({ userRole, className }: SearchBarProps) {
+export default function SearchBar({ userRole, userId, className }: SearchBarProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -68,7 +65,7 @@ export default function SearchBar({ userRole, className }: SearchBarProps) {
 
     setLoading(true)
     try {
-      const endpoint = userRole === 'SOUS_TRAITANT' ? '/api/search/projects' : '/api/search/contractors'
+      const endpoint = '/api/search/projects'
       const response = await fetch(`${endpoint}?q=${encodeURIComponent(searchQuery)}`, {
         // recherche publique: pas besoin d'Authorization
       })
@@ -94,11 +91,15 @@ export default function SearchBar({ userRole, className }: SearchBarProps) {
     
     const id = typeof result.id === 'string' ? result.id : (result as any).id?.toString?.() || '' // eslint-disable-line @typescript-eslint/no-explicit-any
     if (!id) return
-    if (result.type === 'project') {
-      router.push(`/projets/${id}`)
-    } else {
-      router.push(`/profil/${id}`)
+    if (userRole === 'DONNEUR_ORDRE') {
+      if (result.ownerId && userId && result.ownerId === userId) {
+        router.push(`/donneur-ordre/projets/${id}`)
+      } else {
+        router.push(`/projets/${id}`)
+      }
+      return
     }
+    router.push(`/projets/${id}`)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -106,22 +107,15 @@ export default function SearchBar({ userRole, className }: SearchBarProps) {
       e.preventDefault()
       const trimmed = query.trim()
       if (!trimmed) return
-      if (userRole === 'SOUS_TRAITANT') {
-        localStorage.setItem('search:projets:q', trimmed)
-        router.push('/projets')
-      } else {
-        localStorage.setItem('search:annuaire:q', trimmed)
-        router.push('/annuaire')
-      }
+      localStorage.setItem('search:projets:q', trimmed)
+      router.push('/projets')
       setIsOpen(false)
     }
   }
 
   const getPlaceholder = () => {
     if (!userRole) return 'Connectez-vous pour rechercher...'
-    return userRole === 'SOUS_TRAITANT' 
-      ? 'Rechercher des projets...' 
-      : 'Rechercher des sous-traitants...'
+    return 'Rechercher des appels d\'offre...'
   }
 
   const handleFocus = () => {
@@ -175,97 +169,41 @@ export default function SearchBar({ userRole, className }: SearchBarProps) {
                   onClick={() => handleResultClick(result)}
                   className="p-4 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 transition-colors"
                 >
-                  {result.type === 'project' ? (
-                    // Résultat projet pour sous-traitants
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between">
-                        <h4 className="font-medium text-sm text-gray-900 line-clamp-1">
-                          {result.title}
-                        </h4>
-                        {result.budget && (
-                          <Badge variant="secondary" className="ml-2 flex-shrink-0">
-                            {result.budget.toLocaleString()}€
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between">
+                      <h4 className="font-medium text-sm text-gray-900 line-clamp-1">
+                        {result.title}
+                      </h4>
+                      {result.budget && (
+                        <Badge variant="secondary" className="ml-2 flex-shrink-0">
+                          {result.budget.toLocaleString()}€
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 line-clamp-2">
+                      {cleanMarkdown(result.description)}
+                    </p>
+                    {result.location && (
+                      <div className="flex items-center text-xs text-gray-500">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {result.location}
+                      </div>
+                    )}
+                    {result.expertise && result.expertise.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {result.expertise.slice(0, 3).map((skill) => (
+                          <Badge key={skill} variant="outline" className="text-xs py-0">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {result.expertise.length > 3 && (
+                          <Badge variant="outline" className="text-xs py-0">
+                            +{result.expertise.length - 3}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600 line-clamp-2">
-                        {cleanMarkdown(result.description)}
-                      </p>
-                      {result.location && (
-                        <div className="flex items-center text-xs text-gray-500">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {result.location}
-                        </div>
-                      )}
-                      {result.expertise && result.expertise.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {result.expertise.slice(0, 3).map((skill) => (
-                            <Badge key={skill} variant="outline" className="text-xs py-0">
-                              {skill}
-                            </Badge>
-                          ))}
-                          {result.expertise.length > 3 && (
-                            <Badge variant="outline" className="text-xs py-0">
-                              +{result.expertise.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    // Résultat sous-traitant pour donneurs d'ordre
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={result.avatar} />
-                          <AvatarFallback>
-                            <User className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-sm text-gray-900 truncate">
-                              {result.title}
-                            </h4>
-                            {result.rating && (
-                              <div className="flex items-center ml-2">
-                                <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                                <span className="text-xs text-gray-600 ml-1">
-                                  {result.rating.toFixed(1)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          {result.company && (
-                            <div className="flex items-center text-xs text-gray-500">
-                              <Building2 className="h-3 w-3 mr-1" />
-                              {result.company}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {result.location && (
-                        <div className="flex items-center text-xs text-gray-500 ml-11">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {result.location}
-                        </div>
-                      )}
-                      {result.expertise && result.expertise.length > 0 && (
-                        <div className="flex flex-wrap gap-1 ml-11">
-                          {result.expertise.slice(0, 4).map((skill) => (
-                            <Badge key={skill} variant="outline" className="text-xs py-0">
-                              {skill}
-                            </Badge>
-                          ))}
-                          {result.expertise.length > 4 && (
-                            <Badge variant="outline" className="text-xs py-0">
-                              +{result.expertise.length - 4}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

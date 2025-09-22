@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Créer le projet
     const projet = await prisma.projet.create({
-      data: {
+      data: ({
         donneurOrdreId: user.id,
         titre: data.titre,
         description: data.description,
@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         adresseChantier: data.adresseChantier,
         villeChantier: data.villeChantier,
         codePostalChantier: data.codePostalChantier,
+        departement: data.departement || null,
         dateDebut: new Date(data.dateDebut),
         dateFin: new Date(data.dateFin),
         delai: new Date(data.delai),
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
         infosAdditionnelles: data.infosAdditionnelles ? JSON.stringify(data.infosAdditionnelles) : null,
         externalFilesLink: data.externalFilesLink || null,
         // Le statut de modération est PENDING par défaut
-      },
+      }) as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       include: {
         donneurOrdre: {
           select: {

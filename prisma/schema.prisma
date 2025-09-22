@@ -186,6 +186,7 @@ model Projet {
   adresseChantier String
   villeChantier   String
   codePostalChantier String
+  departement     String?
   dateDebut       DateTime
   dateFin         DateTime
   delai           DateTime      // Date limite pour postuler

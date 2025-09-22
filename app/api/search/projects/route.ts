@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
       take: 10,
       select: {
         id: true,
+        donneurOrdreId: true,
         titre: true,
         description: true,
         prixMax: true,
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
       budget: p.prixMax,
       location: p.villeChantier,
       expertise: p.typeChantier,
+      ownerId: p.donneurOrdreId,
     }))
 
     return NextResponse.json({ data: { results } })

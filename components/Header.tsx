@@ -34,20 +34,15 @@ export default function Header() {
       current: pathname.startsWith('/projets')
     },
     {
-      name: 'Annuaire',
-      href: '/annuaire',
-      current: pathname.startsWith('/annuaire')
+      name: 'Contact',
+      href: '/contact',
+      current: pathname.startsWith('/contact')
     },
     {
       name: 'Documentation',
       href: '/documentation',
       current: pathname.startsWith('/documentation')
     },
-    {
-      name: 'Contact',
-      href: '/contact',
-      current: pathname.startsWith('/contact')
-    }
   ]
 
   // Routes où le header ne doit pas apparaître (si besoin)
@@ -101,7 +96,8 @@ export default function Header() {
           {/* Barre de recherche */}
           <div className="hidden lg:flex flex-1 justify-center px-4 lg:px-8">
             <SearchBar 
-              userRole={user?.role || null} 
+              userRole={user?.role || null}
+              userId={user?.id || null}
               className="w-full max-w-lg"
             />
           </div>
@@ -111,7 +107,8 @@ export default function Header() {
             {/* Recherche mobile */}
             <div className="lg:hidden flex-1 mx-2">
               <SearchBar 
-                userRole={user?.role || null} 
+                userRole={user?.role || null}
+                userId={user?.id || null}
                 className="w-full"
               />
             </div>

@@ -18,6 +18,7 @@ interface Projet {
   adresseChantier: string
   villeChantier: string
   codePostalChantier: string
+  departement?: string
   dateDebut: string
   dateFin: string
   delai: string
@@ -65,13 +66,9 @@ export default function ProjetsPage() {
 
   // États des filtres
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedVille, setSelectedVille] = useState('')
-  const [prixMin, setPrixMin] = useState('')
-  const [prixMax, setPrixMax] = useState('')
-  const [dureeMin, setDureeMin] = useState('')
-  const [dureeMax, setDureeMax] = useState('')
+  const [selectedVilles, setSelectedVilles] = useState<string[]>([])
+  const [selectedDepartements, setSelectedDepartements] = useState<string[]>([])
   const [selectedTypes, setSelectedTypes] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<'recent' | 'price-asc' | 'price-desc' | 'duration-asc' | 'duration-desc'>('recent')
 
   useEffect(() => {
     fetchProjets()
@@ -86,7 +83,6 @@ export default function ProjetsPage() {
     const saved = localStorage.getItem('search:projets:q')
     if (saved) {
       setSearchTerm(saved)
-      // auto-clear pour prochaine visite
       localStorage.removeItem('search:projets:q')
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -177,28 +173,28 @@ export default function ProjetsPage() {
 
   // Obtenir la liste unique des villes
   const villes = useMemo(() => {
-    const villesSet = new Set(projets.map(p => p.villeChantier))
+    const villesSet = new Set(projets.map(p => p.villeChantier).filter(Boolean))
     return Array.from(villesSet).sort()
+  }, [projets])
+
+  const departements = useMemo(() => {
+    const depSet = new Set(projets.map(p => p.departement).filter((d): d is string => Boolean(d)))
+    return Array.from(depSet).sort()
   }, [projets])
 
   // Filtrer et trier les projets
   const filteredProjets = useMemo(() => {
     const filtered = projets.filter(projet => {
-      // Recherche par titre
+      // Recherche par titre/description
       const matchesSearch = !searchTerm || 
         projet.titre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         projet.description.toLowerCase().includes(searchTerm.toLowerCase())
 
-      // Filtre par ville
-      const matchesVille = !selectedVille || projet.villeChantier === selectedVille
+      // Filtre par villes multiples
+      const matchesVille = selectedVilles.length === 0 || selectedVilles.includes(projet.villeChantier)
 
-      // Filtre par prix
-      const matchesPrixMin = !prixMin || projet.prixMax >= parseFloat(prixMin)
-      const matchesPrixMax = !prixMax || projet.prixMax <= parseFloat(prixMax)
-
-      // Filtre par durée
-      const matchesDureeMin = !dureeMin || projet.dureeEstimee >= parseInt(dureeMin)
-      const matchesDureeMax = !dureeMax || projet.dureeEstimee <= parseInt(dureeMax)
+      // Filtre par départements multiples
+      const matchesDepartement = selectedDepartements.length === 0 || (projet.departement ? selectedDepartements.includes(projet.departement) : false)
 
       // Filtre par types de chantier
       const matchesTypes = selectedTypes.length === 0 || 
@@ -210,30 +206,14 @@ export default function ProjetsPage() {
       // Date limite non dépassée
       const notExpired = new Date(projet.delai) > new Date()
 
-      return matchesSearch && matchesVille && matchesPrixMin && matchesPrixMax && 
-             matchesDureeMin && matchesDureeMax && matchesTypes && isOpen && notExpired
+      return matchesSearch && matchesVille && matchesDepartement && matchesTypes && isOpen && notExpired
     })
 
-    // Tri
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'recent':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        case 'price-asc':
-          return a.prixMax - b.prixMax
-        case 'price-desc':
-          return b.prixMax - a.prixMax
-        case 'duration-asc':
-          return a.dureeEstimee - b.dureeEstimee
-        case 'duration-desc':
-          return b.dureeEstimee - a.dureeEstimee
-        default:
-          return 0
-      }
-    })
+    // Tri par défaut: plus récents
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return filtered
-  }, [projets, searchTerm, selectedVille, prixMin, prixMax, dureeMin, dureeMax, selectedTypes, sortBy])
+  }, [projets, searchTerm, selectedVilles, selectedDepartements, selectedTypes])
 
   const handleTypeToggle = (type: string) => {
     setSelectedTypes(prev => 
@@ -244,14 +224,9 @@ export default function ProjetsPage() {
   }
 
   const clearFilters = () => {
-    setSearchTerm('')
-    setSelectedVille('')
-    setPrixMin('')
-    setPrixMax('')
-    setDureeMin('')
-    setDureeMax('')
+    setSelectedVilles([])
+    setSelectedDepartements([])
     setSelectedTypes([])
-    setSortBy('recent')
   }
 
   const getStatusBadge = (status: string) => {
@@ -364,7 +339,7 @@ export default function ProjetsPage() {
           </div>
 
           <div className="space-y-6">
-            {/* Recherche */}
+            {/* Recherche par titre/description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Rechercher un projet
@@ -379,96 +354,91 @@ export default function ProjetsPage() {
             </div>
 
             {/* Filtres en ligne */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Ville */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Villes (multi) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ville
+                  Villes
                 </label>
                 <select
-                  value={selectedVille}
-                  onChange={(e) => setSelectedVille(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+                  multiple
+                  value={selectedVilles}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions).map(o => o.value)
+                    setSelectedVilles(values)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 h-40"
                 >
-                  <option value="">Toutes les villes</option>
                   {villes.map(ville => (
                     <option key={ville} value={ville}>{ville}</option>
                   ))}
                 </select>
+                {selectedVilles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedVilles.map(v => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setSelectedVilles(prev => prev.filter(x => x !== v))}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                        title="Retirer"
+                      >
+                        {v}
+                        <span className="ml-1 text-blue-700">✕</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVilles([])}
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    >
+                      Effacer
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Prix minimum */}
+              {/* Départements (multi) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prix minimum (€)
-                </label>
-                <input
-                  type="number"
-                  value={prixMin}
-                  onChange={(e) => setPrixMin(e.target.value)}
-                  placeholder="Ex: 1000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-
-              {/* Prix maximum */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prix maximum (€)
-                </label>
-                <input
-                  type="number"
-                  value={prixMax}
-                  onChange={(e) => setPrixMax(e.target.value)}
-                  placeholder="Ex: 10000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-
-              {/* Tri */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trier par
+                  Départements
                 </label>
                 <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)} // eslint-disable-line @typescript-eslint/no-explicit-any  
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+                  multiple
+                  value={selectedDepartements}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions).map(o => o.value)
+                    setSelectedDepartements(values)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 h-40"
                 >
-                  <option value="recent">Plus récents</option>
-                  <option value="price-asc">Prix croissant</option>
-                  <option value="price-desc">Prix décroissant</option>
-                  <option value="duration-asc">Durée croissante</option>
-                  <option value="duration-desc">Durée décroissante</option>
+                  {departements.map(dep => (
+                    <option key={dep} value={dep}>{dep}</option>
+                  ))}
                 </select>
-              </div>
-            </div>
-
-            {/* Durée */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Durée minimum (jours)
-                </label>
-                <input
-                  type="number"
-                  value={dureeMin}
-                  onChange={(e) => setDureeMin(e.target.value)}
-                  placeholder="Ex: 5"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Durée maximum (jours)
-                </label>
-                <input
-                  type="number"
-                  value={dureeMax}
-                  onChange={(e) => setDureeMax(e.target.value)}
-                  placeholder="Ex: 30"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
-                />
+                {selectedDepartements.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedDepartements.map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSelectedDepartements(prev => prev.filter(x => x !== d))}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
+                        title="Retirer"
+                      >
+                        {d}
+                        <span className="ml-1 text-green-700">✕</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDepartements([])}
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    >
+                      Effacer
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
