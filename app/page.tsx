@@ -6,20 +6,13 @@ import Link from 'next/link';
 import { FaFileContract, FaBuilding } from 'react-icons/fa';
 import { useUser } from '@/lib/user-context';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function ChantierDirectHomepage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const [latestProjects, setLatestProjects] = useState<any[]>([]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [stats, setStats] = useState<{ donneurs: number; sousTraitants: number; projetsEnCours: number; projetsTermines: number }>({ donneurs: 0, sousTraitants: 0, projetsEnCours: 0, projetsTermines: 0 });
   const { user } = useUser();
   const router = useRouter();
-
-  const handleProjectClick = (e: React.MouseEvent) => {
-    if (!user) {
-      e.preventDefault();
-      router.push('/register');
-    }
-  };
 
   const handlePrimaryCtaClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -59,21 +52,6 @@ export default function ChantierDirectHomepage() {
         observerRef.current.disconnect();
       }
     };
-  }, []);
-
-  useEffect(() => {
-    const fetchLatest = async () => {
-      try {
-        const res = await fetch('/api/projets');
-        if (!res.ok) return;
-        const data = await res.json();
-        const projets = Array.isArray(data?.projets) ? data.projets : [];
-        setLatestProjects(projets.slice(0, 2));
-      } catch (e) {
-        console.error('Erreur lors de la récupération des projets:', e);
-      }
-    };
-    fetchLatest();
   }, []);
 
   useEffect(() => {
@@ -148,134 +126,11 @@ export default function ChantierDirectHomepage() {
         }
       `}</style>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen flex items-center">
-        <div className="absolute inset-0 bg-grid-slate-100 bg-[size:20px_20px] [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
-        
-        <div className="relative w-full mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-              {/* Left Column - Content */}
-              <div className="text-center lg:text-left fade-in-on-scroll min-w-0">
-              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6 max-w-full">
-                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate">Plateforme BTP de confiance</span>
-              </div>
-              
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-slate-900 leading-tight mb-6 break-words">
-                Connectez-vous aux 
-                <span className="text-blue-600 block">meilleurs pros du BTP</span>
-              </h1>
-              
-              <p className="text-lg sm:text-xl text-slate-600 mb-8 max-w-2xl mx-auto lg:mx-0">
-                La plateforme qui simplifie la mise en relation entre donneurs d&apos;ordre et sous-traitants qualifiés. 
-                <span className="font-semibold text-slate-700">Travaillez avec les pros du BTP.</span>
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12 justify-center lg:justify-start">
-                <button onClick={handlePrimaryCtaClick} className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl min-w-0 flex-shrink">
-                  <span className="truncate">Je veux poster un chantier</span>
-                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                </button>
-                <Link href="/projets" className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 hover:border-blue-300 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 min-w-0 flex-shrink">
-                  <span className="truncate">Je cherche des chantiers</span>
-                  <Search className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                </Link>
-              </div>
-              
-              {/* Stats */}
-            {/*   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-                {stats.map((stat, index) => (
-                  <div key={index} className="text-center">
-                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">{stat.number}</div>
-                    <div className="text-xs sm:text-sm text-slate-600">{stat.label}</div>
-                  </div>
-                ))}
-              </div> */}
-            </div>
-            
-            {/* Right Column - Visual */}
-            <div className="relative fade-in-on-scroll min-w-0">
-              <div className="bg-gradient-to-br from-white to-slate-100 rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 border border-slate-200 overflow-hidden">
-                {/* Mock Interface */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-slate-600">Projets disponibles</div>
-                    <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">+12 nouveaux</div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {latestProjects.length === 0 ? (
-                      <div className="text-sm text-slate-500">Aucun projet récent.</div>
-                    ) : (
-                      latestProjects.map((p) => (
-                        <Link 
-                          key={p.id} 
-                          href={user ? `/projets/${p.id}` : '#'} 
-                          className="block relative"
-                          onClick={(e) => handleProjectClick(e)}
-                        >
-                          <div className="bg-white rounded-lg p-3 sm:p-4 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between mb-2 min-w-0">
-                              <div className={`font-semibold text-slate-900 truncate flex-1 mr-2 text-sm sm:text-base ${!user ? 'blur-sm select-none' : ''}`}>
-                                {p.titre || 'Projet'}
-                              </div>
-                              {p.budgetMax ? (
-                                <div className="text-xs sm:text-sm font-medium text-blue-600 flex-shrink-0">{p.budgetMax}€</div>
-                              ) : null}
-                            </div>
-                            <div className="text-xs sm:text-sm text-slate-600 mb-2 sm:mb-3 truncate">
-                              {(p.villeChantier || 'Ville inconnue')}{p.typeChantier ? ` • ${p.typeChantier}` : ''}
-                            </div>
-                            <div className="flex items-center gap-2 min-w-0">
-                              <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
-                              <span className={`text-xs sm:text-sm text-slate-600 truncate ${!user ? 'blur-sm select-none' : ''}`}>
-                                Publié le {new Date(p.createdAt).toLocaleDateString()}
-                                {p.donneurOrdre && (
-                                  <span className="ml-2">• Par {p.donneurOrdre.nomSociete || `${p.donneurOrdre.prenom} ${p.donneurOrdre.nom}`}</span>
-                                )}
-                              </span>
-                            </div>
-                            {!user && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-lg">
-                                <div className="text-center">
-                                  <div className="text-sm font-medium text-slate-900 mb-1">🔒 Connectez-vous</div>
-                                  <div className="text-xs text-slate-600">pour voir les détails</div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </Link>
-                      ))
-                    )}
-                    <Link href="/projets" className="block">
-                      <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border-2 border-blue-200 hover:bg-blue-100 transition-colors">
-                        <div className="text-center text-blue-700 font-medium text-sm sm:text-base">
-                          Voir tous les projets →
-                        </div>
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Floating elements */}
-              <div className="absolute top-2 right-2 sm:-top-4 sm:-right-4 bg-green-500 text-white p-2 sm:p-3 rounded-xl shadow-lg float-animation">
-                <CheckCircle className="h-4 w-4 sm:h-6 sm:w-6" />
-              </div>
-              <div className="absolute bottom-2 left-2 sm:-bottom-4 sm:-left-4 bg-blue-600 text-white p-2 sm:p-3 rounded-xl shadow-lg float-animation" style={{animationDelay: '1s'}}>
-                <Shield className="h-4 w-4 sm:h-6 sm:w-6" />
-              </div>
-            </div>
-          </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section className="py-20 bg-white">
+      {/* How it Works - Première section */}
+      <section className="py-20 bg-white min-h-screen flex items-center justify-center">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 fade-in-on-scroll">
+          <div className="text-center mb-16 fade-in-on-scroll flex flex-col justify-center items-center">
+            <Image src="/ChantierDirectIcon.png" alt="How it Works" width={100} height={100} />
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
               Simple. Rapide. Efficace.
             </h2>
@@ -333,9 +188,9 @@ export default function ChantierDirectHomepage() {
               
               <div className="space-y-6">
                 {[
-                  { step: "1", title: "Créez votre profil", desc: "Mettez en avant vos compétences, vos référence de chantier et vos tarifs" },
+                  { step: "1", title: "Créez votre profil", desc: "Mettez en avant vos compétences et vos référence de chantier." },
                   { step: "2", title: "Trouvez des projets", desc: "Accédez aux chantiers près de chez vous grâce à nos recommandations ou via la recherche" },
-                  { step: "3", title: "Décrochez votre première mission", desc: "Proposez vos services et décrochez des contrats" }
+                  { step: "3", title: "Décrochez le chantier", desc: "Proposez vos services et décrochez des contrats" }
                 ].map((item, index) => (
                   <div key={index} className="flex gap-4">
                     <div className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
@@ -363,6 +218,104 @@ export default function ChantierDirectHomepage() {
         </div>
       </section>
 
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen flex items-center">
+        <div className="absolute inset-0 bg-grid-slate-100 bg-[size:20px_20px] [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
+        
+        <div className="relative w-full mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="max-w-4xl mx-auto text-center">
+            {/* Content */}
+            <div className="fade-in-on-scroll">
+              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6">
+                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span>Plateforme BTP de confiance</span>
+              </div>
+              
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-slate-900 leading-tight mb-6">
+                Connectez-vous aux 
+                <span className="text-blue-600 block">meilleurs pros du BTP</span>
+              </h1>
+              
+              <p className="text-lg sm:text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
+                La plateforme qui simplifie la mise en relation entre donneurs d&apos;ordre et sous-traitants qualifiés. 
+                <span className="font-semibold text-slate-700">Travaillez avec les pros du BTP.</span>
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12 justify-center">
+                <button onClick={handlePrimaryCtaClick} className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl">
+                  <span>Je veux poster un chantier</span>
+                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                </button>
+                <Link href="/projets" className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 hover:border-blue-300 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2">
+                  <span>Je cherche des chantiers</span>
+                  <Search className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                </Link>
+              </div>
+              
+              {/* Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {/* Donneurs d'ordre */}
+                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-blue-100 border border-blue-200 shadow-[0_10px_30px_-15px_rgba(59,130,246,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(59,130,246,0.45)] transition-all">
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-200/40 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
+                      <Building2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-extrabold text-blue-900 leading-tight">{stats.donneurs.toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-blue-800/80">Donneurs d&apos;ordre</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sous-traitants */}
+                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-green-100 border border-green-200 shadow-[0_10px_30px_-15px_rgba(34,197,94,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(34,197,94,0.45)] transition-all">
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-green-200/40 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-green-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
+                      <Users className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-extrabold text-green-900 leading-tight">{stats.sousTraitants.toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-green-800/80">Sous-traitants</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Projets en cours */}
+                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-red-100 border border-red-200 shadow-[0_10px_30px_-15px_rgba(239,68,68,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(239,68,68,0.45)] transition-all">
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-red-200/40 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
+                      <Clock className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-extrabold text-red-900 leading-tight">{stats.projetsEnCours.toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-red-800/80">Projets en cours</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Projets terminés */}
+                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-purple-100 border border-purple-200 shadow-[0_10px_30px_-15px_rgba(147,51,234,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(147,51,234,0.45)] transition-all">
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-purple-200/40 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
+                      <CheckCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-extrabold text-purple-900 leading-tight">{stats.projetsTermines.toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-purple-800/80">Projets terminés</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
       {/* Quick Action Section */}
       <section className="py-20 bg-gradient-to-br from-blue-600 to-blue-700 text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -376,9 +329,9 @@ export default function ChantierDirectHomepage() {
             </p>
           </div>
           
-          <div className="grid lg:grid-cols-2 gap-12 items-center fade-in-on-scroll">
+          <div className="grid place-content-center place-items-center gap-12 items-center fade-in-on-scroll">
             {/* Left - Visual Timeline */}
-            <div className="relative">
+            <div className="relative w-full">
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
@@ -425,70 +378,7 @@ export default function ChantierDirectHomepage() {
             </div>
             
             {/* Right - Messaging Interface Mock */}
-            <div className="relative">
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                {/* Header */}
-                <div className="bg-slate-100 px-6 py-4 border-b">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                      JD
-                    </div>
-                    <div>
-                      <div className="font-semibold text-slate-900">Jean Dupont - Maçonnerie</div>
-                      <div className="text-sm text-green-600 flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        En ligne
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Messages */}
-                <div className="p-6 space-y-4 h-64 overflow-y-auto">
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      JD
-                    </div>
-                    <div className="bg-slate-100 rounded-lg p-3 max-w-xs">
-                      <p className="text-sm text-slate-900">Bonjour ! J&apos;ai vu votre projet de rénovation. Je peux vous faire un devis sous 24h.</p>
-                      <div className="text-xs text-slate-500 mt-1">Il y a 3 min</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 justify-end">
-                    <div className="bg-blue-600 text-white rounded-lg p-3 max-w-xs">
-                      <p className="text-sm">Parfait ! Pouvez-vous passer sur site demain ?</p>
-                      <div className="text-xs text-blue-200 mt-1">Il y a 1 min</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      JD
-                    </div>
-                    <div className="bg-slate-100 rounded-lg p-3 max-w-xs">
-                      <p className="text-sm text-slate-900">Oui, je suis disponible entre 14h et 17h 👍</p>
-                      <div className="text-xs text-slate-500 mt-1">À l&apos;instant</div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Input */}
-                <div className="border-t p-4">
-                  <div className="flex gap-3">
-                    <input 
-                      type="text" 
-                      placeholder="Tapez votre message..."
-                      className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500"
-                      disabled
-                    />
-                    <button className="bg-blue-600 text-white p-2 rounded-lg">
-                      <Send className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            
           </div>
         </div>
       </section>
@@ -496,66 +386,6 @@ export default function ChantierDirectHomepage() {
       {/* Features Section */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Stat bubbles */}
-          <div className="mb-16 fade-in-on-scroll">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {/* Donneurs d'ordre */}
-                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200/60 shadow-[0_10px_30px_-15px_rgba(30,64,175,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(30,64,175,0.45)] transition-all">
-                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-200/40 rounded-full blur-2xl" />
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
-                      <Building2 className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-extrabold text-blue-900 leading-tight">{stats.donneurs.toLocaleString('fr-FR')}</div>
-                      <div className="text-sm text-blue-800/80">Donneurs d&apos;ordre</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sous-traitants */}
-                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200/60 shadow-[0_10px_30px_-15px_rgba(5,150,105,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(5,150,105,0.45)] transition-all">
-                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-emerald-200/40 rounded-full blur-2xl" />
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
-                      <Users className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-extrabold text-emerald-900 leading-tight">{stats.sousTraitants.toLocaleString('fr-FR')}</div>
-                      <div className="text-sm text-emerald-800/80">Sous-traitants</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Projets en cours */}
-                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200/60 shadow-[0_10px_30px_-15px_rgba(245,158,11,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(245,158,11,0.45)] transition-all">
-                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-amber-200/40 rounded-full blur-2xl" />
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
-                      <Clock className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-extrabold text-amber-900 leading-tight">{stats.projetsEnCours.toLocaleString('fr-FR')}</div>
-                      <div className="text-sm text-amber-800/80">Projets en cours</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Projets terminés */}
-                <div className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200/60 shadow-[0_10px_30px_-15px_rgba(124,58,237,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(124,58,237,0.45)] transition-all">
-                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-violet-200/40 rounded-full blur-2xl" />
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-violet-600 text-white flex items-center justify-center shadow-lg ring-2 ring-white/50">
-                      <CheckCircle className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-extrabold text-violet-900 leading-tight">{stats.projetsTermines.toLocaleString('fr-FR')}</div>
-                      <div className="text-sm text-violet-800/80">Projets terminés</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           <div className="text-center mb-16 fade-in-on-scroll">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
               Pourquoi Chantier Direct ?
@@ -674,21 +504,18 @@ export default function ChantierDirectHomepage() {
           {/* Deux colonnes: Donneurs d'Ordre / Sous-Traitants */}
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Donneurs d'ordre */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg fade-in-on-scroll">
+            <div className="bg-white rounded-2xl p-8 shadow-lg fade-in-on-scroll flex flex-col justify-between">
               <div className="text-center mb-8">
                 <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Building2 className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900">Pour les Donneurs d&apos;Ordre</h3>
               </div>
-              <div className="space-y-6">
-                {[ 
-                  { step: '1', title: 'Recherchez par expertise', desc: 'Utilisez nos filtres avancés pour trouver des professionnels spécialisés : plomberie, électricité, maçonnerie, carrelage...' },
-                  { step: '2', title: 'Analysez les profils détaillés', desc: 'Consultez certifications, réalisations, évaluations clients et zones d\'intervention.' },
-                  { step: '3', title: 'Vérifiez les recommandations', desc: 'Lisez les avis, les notes de qualité et les références de projets similaires.' },
-                  { step: '4', title: 'Contactez directement', desc: 'Échangez avec les professionnels sélectionnés et obtenez des devis.' },
+              {[ 
+                  { step: '1', title: 'Analysez les profils détaillés', desc: 'Consultez certifications, réalisations, évaluations clients et zones d\'intervention.' },
+                  { step: '2', title: 'Vérifiez les recommandations', desc: 'Lisez les avis, les notes de qualité et les références de projets similaires.' },
                 ].map((item, idx) => (
-                  <div key={idx} className="flex gap-4">
+                  <div key={idx} className="flex flex-col text-center gap-4 h-fit w-full justify-center items-center">
                     <div className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">{item.step}</div>
                     <div>
                       <h4 className="font-semibold text-slate-900">{item.title}</h4>
@@ -696,6 +523,7 @@ export default function ChantierDirectHomepage() {
                     </div>
                   </div>
                 ))}
+              <div className="space-y-6 ">
                 <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="font-semibold text-slate-900 mb-2">Critères de sélection :</div>
                   <ul className="list-disc pl-5 space-y-1 text-slate-700 text-sm">
