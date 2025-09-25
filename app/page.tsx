@@ -130,12 +130,21 @@ export default function ChantierDirectHomepage() {
       <section className="py-20 bg-white min-h-screen flex items-center justify-center">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 fade-in-on-scroll flex flex-col justify-center items-center">
-            <Image src="/ChantierDirectIcon.png" alt="How it Works" width={100} height={100} />
+            <Image src="/ChantierDirectIcon.png" alt="How it Works" width={300} height={300} />
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
               Simple. Rapide. Efficace.
             </h2>
           </div>
-          
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12 justify-center">
+                <button onClick={handlePrimaryCtaClick} className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl">
+                  <span>Je veux poster un chantier</span>
+                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                </button>
+                <Link href="/projets" className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 hover:border-blue-300 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2">
+                  <span>Je cherche des chantiers</span>
+                  <Search className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                </Link>
+              </div>
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Donneurs d'ordre */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-8 shadow-lg fade-in-on-scroll">
@@ -240,17 +249,6 @@ export default function ChantierDirectHomepage() {
                 La plateforme qui simplifie la mise en relation entre donneurs d&apos;ordre et sous-traitants qualifiés. 
                 <span className="font-semibold text-slate-700">Travaillez avec les pros du BTP.</span>
               </p>
-              
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12 justify-center">
-                <button onClick={handlePrimaryCtaClick} className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl">
-                  <span>Je veux poster un chantier</span>
-                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                </button>
-                <Link href="/projets" className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 hover:border-blue-300 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2">
-                  <span>Je cherche des chantiers</span>
-                  <Search className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                </Link>
-              </div>
               
               {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
