@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
           prenom: user.prenom || '',
           nomSociete: user.nomSociete || undefined,
           email: user.email,
-          telephone: user.telephone || ''
+          telephone: ''
         },
         projet: {
           id: projet.id,
