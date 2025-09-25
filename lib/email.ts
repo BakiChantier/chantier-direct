@@ -152,6 +152,40 @@ export interface MessageNotificationData {
   }
 }
 
+// Interface pour les notifications de rejet d'offre par admin
+export interface OffreRejectData {
+  sousTraitantNom: string
+  projetTitre: string
+  donneurOrdreNom: string
+  raisonRejet: string
+  prixPropose: number
+  delaiPropose: number
+}
+
+// Interface pour les notifications de nouveau projet à l'admin
+export interface NouveauProjetAdminData {
+  donneurOrdre: {
+    nom: string
+    prenom: string
+    nomSociete?: string
+    email: string
+    telephone: string
+  }
+  projet: {
+    id: string
+    titre: string
+    description: string
+    typeChantier: string[]
+    prixMax: number
+    dureeEstimee: number
+    adresseChantier: string
+    villeChantier: string
+    dateDebut: Date
+    dateFin: Date
+    delai: Date
+  }
+}
+
 // Template HTML pour la notification de nouvelle demande
 const getContactNotificationTemplate = (data: ContactFormData) => `
 <!DOCTYPE html>
@@ -517,6 +551,207 @@ const getMessageNotificationTemplate = (data: MessageNotificationData) => `
 </html>
 `
 
+// Template HTML pour notification de nouveau projet à l'admin
+const getNouveauProjetAdminTemplate = (data: NouveauProjetAdminData) => `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouveau projet à valider - Chantier Direct</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .header { background: #dc2626; color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center; }
+        .content { padding: 30px; }
+        .project-box { background: #f8f9fa; padding: 20px; border-radius: 5px; border: 1px solid #e9ecef; margin: 20px 0; }
+        .client-box { background: #e8f5e8; padding: 20px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0; }
+        .urgent-box { background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #6c757d; font-size: 14px; }
+        .cta-button { display: inline-block; background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .skills { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .skill-tag { background: #dc2626; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        .info-item { background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #dc2626; }
+        .info-label { font-weight: bold; color: #dc2626; margin-bottom: 5px; }
+        @media (max-width: 600px) {
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Nouveau projet à valider</h1>
+            <p>Chantier Direct - Panel d'administration</p>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour,</p>
+            
+            <p>Un nouveau projet a été publié par un donneur d'ordre et nécessite votre validation avant d'être visible sur la plateforme.</p>
+            
+            <div class="urgent-box">
+                <h3 style="margin-top: 0; color: #856404;">⚠️ Action requise</h3>
+                <p>Ce projet est actuellement en statut <strong>"PENDING"</strong> et n'est pas visible par les sous-traitants. Veuillez le valider ou le rejeter via le panel d'administration.</p>
+            </div>
+            
+            <h3>Détails du projet</h3>
+            <div class="project-box">
+                <h4>${data.projet.titre}</h4>
+                <p><strong>Description :</strong> ${data.projet.description}</p>
+                <p><strong>Localisation :</strong> ${data.projet.adresseChantier}, ${data.projet.villeChantier}</p>
+                <p><strong>Budget maximum :</strong> ${data.projet.prixMax.toLocaleString('fr-FR')} €</p>
+                <p><strong>Durée estimée :</strong> ${data.projet.dureeEstimee} jour${data.projet.dureeEstimee > 1 ? 's' : ''}</p>
+                <div class="skills">
+                    ${data.projet.typeChantier.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                </div>
+            </div>
+            
+            <h3>Informations du donneur d'ordre</h3>
+            <div class="client-box">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Nom complet</div>
+                        <div>${data.donneurOrdre.nomSociete || `${data.donneurOrdre.prenom} ${data.donneurOrdre.nom}`}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Email</div>
+                        <div>${data.donneurOrdre.email}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Téléphone</div>
+                        <div>${data.donneurOrdre.telephone}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">ID Projet</div>
+                        <div>${data.projet.id}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>Dates importantes</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Date de début souhaitée</div>
+                    <div>${data.projet.dateDebut.toLocaleDateString('fr-FR')}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Date de fin souhaitée</div>
+                    <div>${data.projet.dateFin.toLocaleDateString('fr-FR')}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Délai pour postuler</div>
+                    <div>${data.projet.delai.toLocaleDateString('fr-FR')}</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/projets" class="cta-button">
+                    Valider ou rejeter ce projet
+                </a>
+            </div>
+            
+            <div style="background: #e8f5e8; padding: 20px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #28a745;">📋 Checklist de validation</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Vérifier que le projet respecte les conditions d'utilisation</li>
+                    <li>Contrôler la cohérence des informations (dates, budget, localisation)</li>
+                    <li>S'assurer que les types de chantier sont corrects</li>
+                    <li>Valider que le donneur d'ordre a un profil complet</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Ce message a été envoyé automatiquement depuis Chantier Direct.</p>
+            <p>© ${new Date().getFullYear()} Chantier Direct. Tous droits réservés.</p>
+        </div>
+    </div>
+</body>
+</html>
+`
+
+// Template HTML pour notification de rejet d'offre par admin
+const getOffreRejectTemplate = (data: OffreRejectData) => `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offre rejetée - Chantier Direct</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .header { background: #ef4444; color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center; }
+        .content { padding: 30px; }
+        .project-box { background: #f8f9fa; padding: 20px; border-radius: 5px; border: 1px solid #e9ecef; margin: 20px 0; }
+        .offer-box { background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0; }
+        .rejection-box { background: #f8d7da; padding: 20px; border-radius: 5px; border-left: 4px solid #dc3545; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #6c757d; font-size: 14px; }
+        .cta-button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❌ Offre rejetée</h1>
+            <p>Chantier Direct - Plateforme de mise en relation</p>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour <strong>${data.sousTraitantNom}</strong>,</p>
+            
+            <p>Nous vous informons que votre offre pour le projet <strong>"${data.projetTitre}"</strong> a été rejetée par l'administration de Chantier Direct.</p>
+            
+            <h3>Détails du projet</h3>
+            <div class="project-box">
+                <h4>${data.projetTitre}</h4>
+                <p><strong>Client :</strong> ${data.donneurOrdreNom}</p>
+            </div>
+            
+            <h3>Votre offre</h3>
+            <div class="offer-box">
+                <p><strong>Prix proposé :</strong> ${data.prixPropose.toLocaleString('fr-FR')} €</p>
+                <p><strong>Délai proposé :</strong> ${data.delaiPropose} jour${data.delaiPropose > 1 ? 's' : ''}</p>
+            </div>
+            
+            <h3>Raison du rejet</h3>
+            <div class="rejection-box">
+                <p><strong>Explication :</strong></p>
+                <p>${data.raisonRejet.replace(/\n/g, '<br>')}</p>
+            </div>
+            
+            <div style="background: #e8f5e8; padding: 20px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #28a745;">💡 Conseils pour vos prochaines offres</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Assurez-vous que votre profil est complet et à jour</li>
+                    <li>Vérifiez que vos compétences correspondent au projet</li>
+                    <li>Proposez des prix compétitifs et des délais réalistes</li>
+                    <li>Rédigez un message personnalisé et professionnel</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/sous-traitant/dashboard" class="cta-button">
+                    Voir mes autres projets
+                </a>
+            </div>
+            
+            <p style="font-size: 14px; color: #6c757d; margin-top: 30px;">
+                <strong>💪 Ne vous découragez pas !</strong> Continuez à soumettre des offres sur des projets qui correspondent à votre expertise.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>Ce message a été envoyé automatiquement depuis Chantier Direct.</p>
+            <p>© ${new Date().getFullYear()} Chantier Direct. Tous droits réservés.</p>
+        </div>
+    </div>
+</body>
+</html>
+`
+
 // Template HTML pour notification de nouveau projet
 const getNouveauProjetNotificationTemplate = (data: NouveauProjetNotificationData) => `
 <!DOCTYPE html>
@@ -787,6 +1022,109 @@ Répondre au message: ${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:30
     return result
   } catch (error) {
     console.error('Erreur lors de l\'envoi de la notification de message:', error)
+    throw error
+  }
+}
+
+// Fonction pour envoyer une notification de nouveau projet à l'admin
+export async function sendNouveauProjetAdminNotification(data: NouveauProjetAdminData) {
+  try {
+    const adminEmail = 'admin@chantier-direct.fr'
+    
+    const mailOptions = {
+      from: `"${process.env.SMTP_FROM_NAME || 'Chantier Direct'}" <${process.env.REPLY_EMAIL}>`,
+      to: adminEmail,
+      subject: `[Nouveau projet] ${data.projet.titre} - Validation requise`,
+      html: getNouveauProjetAdminTemplate(data),
+      text: `
+Nouveau projet à valider - Chantier Direct
+
+Un nouveau projet a été publié par un donneur d'ordre et nécessite votre validation.
+
+Détails du projet :
+- Titre : ${data.projet.titre}
+- Description : ${data.projet.description}
+- Localisation : ${data.projet.adresseChantier}, ${data.projet.villeChantier}
+- Budget maximum : ${data.projet.prixMax.toLocaleString('fr-FR')} €
+- Durée estimée : ${data.projet.dureeEstimee} jour${data.projet.dureeEstimee > 1 ? 's' : ''}
+- Types de chantier : ${data.projet.typeChantier.join(', ')}
+- Date de début : ${data.projet.dateDebut.toLocaleDateString('fr-FR')}
+- Date de fin : ${data.projet.dateFin.toLocaleDateString('fr-FR')}
+- Délai pour postuler : ${data.projet.delai.toLocaleDateString('fr-FR')}
+
+Informations du donneur d'ordre :
+- Nom : ${data.donneurOrdre.nomSociete || `${data.donneurOrdre.prenom} ${data.donneurOrdre.nom}`}
+- Email : ${data.donneurOrdre.email}
+- Téléphone : ${data.donneurOrdre.telephone}
+- ID Projet : ${data.projet.id}
+
+⚠️ ACTION REQUISE : Ce projet est actuellement en statut "PENDING" et n'est pas visible par les sous-traitants.
+
+Validez ou rejetez ce projet : ${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/projets
+
+Checklist de validation :
+- Vérifier que le projet respecte les conditions d'utilisation
+- Contrôler la cohérence des informations (dates, budget, localisation)
+- S'assurer que les types de chantier sont corrects
+- Valider que le donneur d'ordre a un profil complet
+      `.trim()
+    }
+
+    const result = await replyTransporter.sendMail(mailOptions)
+    console.log('Notification de nouveau projet envoyée à l\'admin:', result.messageId)
+    return result
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de la notification de nouveau projet à l\'admin:', error)
+    throw error
+  }
+}
+
+// Fonction pour envoyer une notification de rejet d'offre par admin
+export async function sendOffreRejectNotification(data: OffreRejectData, sousTraitantEmail: string) {
+  try {
+    const mailOptions = {
+      from: `"${process.env.SMTP_FROM_NAME || 'Chantier Direct'}" <${process.env.REPLY_EMAIL}>`,
+      to: sousTraitantEmail,
+      subject: `[Offre rejetée] ${data.projetTitre} - Chantier Direct`,
+      html: getOffreRejectTemplate(data),
+      text: `
+Offre rejetée - Chantier Direct
+
+Bonjour ${data.sousTraitantNom},
+
+Nous vous informons que votre offre pour le projet "${data.projetTitre}" a été rejetée par l'administration de Chantier Direct.
+
+Détails du projet :
+- Projet : ${data.projetTitre}
+- Client : ${data.donneurOrdreNom}
+
+Votre offre :
+- Prix proposé : ${data.prixPropose.toLocaleString('fr-FR')} €
+- Délai proposé : ${data.delaiPropose} jour${data.delaiPropose > 1 ? 's' : ''}
+
+Raison du rejet :
+${data.raisonRejet}
+
+Conseils pour vos prochaines offres :
+- Assurez-vous que votre profil est complet et à jour
+- Vérifiez que vos compétences correspondent au projet
+- Proposez des prix compétitifs et des délais réalistes
+- Rédigez un message personnalisé et professionnel
+
+Ne vous découragez pas ! Continuez à soumettre des offres sur des projets qui correspondent à votre expertise.
+
+Consultez vos projets : ${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/sous-traitant/dashboard
+
+Cordialement,
+L'équipe Chantier Direct
+      `.trim()
+    }
+
+    const result = await replyTransporter.sendMail(mailOptions)
+    console.log('Notification de rejet d\'offre envoyée:', result.messageId)
+    return result
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de la notification de rejet d\'offre:', error)
     throw error
   }
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, hasRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Role } from '@prisma/client';
-import { sendNouveauProjetNotification } from '@/lib/email';
+import { sendNouveauProjetNotification, sendNouveauProjetAdminNotification } from '@/lib/email';
 
 export async function GET(request: NextRequest) {
   try {
@@ -168,6 +168,36 @@ export async function POST(request: NextRequest) {
     } catch (emailError) {
       console.error('Erreur lors de l\'envoi des notifications de nouveau projet:', emailError)
       // On continue même si les emails échouent
+    }
+
+    // Envoyer une notification à l'admin pour validation
+    try {
+      await sendNouveauProjetAdminNotification({
+        donneurOrdre: {
+          nom: user.nom,
+          prenom: user.prenom || '',
+          nomSociete: user.nomSociete || undefined,
+          email: user.email,
+          telephone: user.telephone || ''
+        },
+        projet: {
+          id: projet.id,
+          titre: projet.titre,
+          description: projet.description,
+          typeChantier: data.typeChantier,
+          prixMax: projet.prixMax,
+          dureeEstimee: projet.dureeEstimee,
+          adresseChantier: projet.adresseChantier,
+          villeChantier: projet.villeChantier,
+          dateDebut: projet.dateDebut,
+          dateFin: projet.dateFin,
+          delai: projet.delai
+        }
+      })
+      console.log('Notification de nouveau projet envoyée à l\'admin')
+    } catch (adminEmailError) {
+      console.error('Erreur lors de l\'envoi de la notification à l\'admin:', adminEmailError)
+      // On continue même si l'email admin échoue
     }
 
     return NextResponse.json({ 
