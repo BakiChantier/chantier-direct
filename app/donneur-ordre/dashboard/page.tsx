@@ -12,7 +12,8 @@ interface Projet {
   titre: string
   description: string
   typeChantier: string[]
-  prixMax: number
+  prixMax: number | null
+  isEnchereLibre: boolean
   status: string
   adresseChantier: string
   villeChantier: string
@@ -705,7 +706,11 @@ export default function DonneurOrdreDashboard() {
                                 📍 <span className="ml-1 truncate">{projet.villeChantier}</span>
                               </span>
                               <span className="flex items-center">
-                                💰 <span className="ml-1">{projet.prixMax.toLocaleString('fr-FR')} €</span>
+                                {projet.isEnchereLibre ? (
+                                  <>🎯 <span className="ml-1">Enchère libre</span></>
+                                ) : (
+                                  <>💰 <span className="ml-1">{projet.prixMax?.toLocaleString('fr-FR')} €</span></>
+                                )}
                               </span>
                               <span className="flex items-center">
                                 📅 <span className="ml-1">{new Date(projet.dateDebut).toLocaleDateString('fr-FR')}</span>
@@ -791,7 +796,13 @@ export default function DonneurOrdreDashboard() {
                           <div className="mt-2 flex items-center justify-between">
                             <div className="flex items-center space-x-4 text-sm text-gray-500">
                               <span>📍 {projet.villeChantier}</span>
-                              <span>💰 {projet.prixMax.toLocaleString('fr-FR')} €</span>
+                              <span>
+                                {projet.isEnchereLibre ? (
+                                  <>🎯 Enchère libre</>
+                                ) : (
+                                  <>💰 {projet.prixMax?.toLocaleString('fr-FR')} €</>
+                                )}
+                              </span>
                               <span>📅 {new Date(projet.dateDebut).toLocaleDateString('fr-FR')}</span>
                             </div>
                             <div className="flex items-center space-x-2">

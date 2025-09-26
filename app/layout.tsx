@@ -39,6 +39,9 @@ export const metadata: Metadata = {
     description: "La plateforme de mise en relation entre donneurs d'ordre et sous-traitants dans le secteur du BTP",
     images: "/ChantierDirectIcon.png",
   },
+  alternates: {
+    canonical: "https://www.chantier-direct.fr",
+  },
 };
 
 export const viewport: Viewport = {

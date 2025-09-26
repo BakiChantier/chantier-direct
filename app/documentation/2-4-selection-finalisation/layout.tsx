@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 
 
 export const metadata: Metadata = {
-  title: "Nous Contacter -Chantier Direct",
-  description: "Contactez-nous pour toute question ou demande de service",
-  keywords: "Chantier Direct, contact, question, demande de service",
+  title: "Selection et finalisation -Chantier Direct",
+  description: "Selection et finalisation de Chantier Direct",
+  keywords: "Chantier Direct, présentation, documentation",
   authors: [{ name: "Chantier Direct" }],
   publisher: "Chantier Direct",
   icons: {
@@ -16,11 +16,11 @@ export const metadata: Metadata = {
             url : "/ChantierDirectIcon.png",
             width: 1200,
             height: 630,
-            alt: "Nous Contacter - Chantier Direct",
+            alt: "Selection et finalisation - Chantier Direct",
         },
     ],
-    title: "Nous Contacter - Chantier Direct",
-    description: "Contactez-nous pour toute question ou demande de service",
+    title: "Selection et finalisation - Chantier Direct",
+    description: "Selection et finalisation de Chantier Direct",
     url: "https://www.chantier-direct.fr",
     siteName: "Chantier Direct",
     locale: "fr_FR",
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nous Contacter - Chantier Direct",
-    description: "Contactez-nous pour toute question ou demande de service",
+    title: "Selection et finalisation - Chantier Direct",
+    description: "Selection et finalisation de Chantier Direct",
     images: "/ChantierDirectIcon.png",
   },
   robots: {
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   alternates: {
-    canonical: "https://www.chantier-direct.fr/contact",
+    canonical: "https://www.chantier-direct.fr/documentation/2-4-selection-finalisation",
   },
 };
 
@@ -46,7 +46,7 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function ContactLayout({
+export default function Documentation24SelectionFinalisationLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

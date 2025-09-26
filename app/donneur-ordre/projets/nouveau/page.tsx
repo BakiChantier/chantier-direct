@@ -35,6 +35,7 @@ interface ProjetFormData {
   description: string
   typeChantier: string[]
   prixMax: string
+  isEnchereLibre: boolean
   dureeEstimee: string
   adresseChantier: string
   villeChantier: string
@@ -75,6 +76,7 @@ export default function NouvelAppelOffre() {
     description: '',
     typeChantier: [],
     prixMax: '',
+    isEnchereLibre: false,
     dureeEstimee: '',
     adresseChantier: '',
     villeChantier: '',
@@ -202,6 +204,7 @@ export default function NouvelAppelOffre() {
       description: '',
       typeChantier: [],
       prixMax: '',
+      isEnchereLibre: false,
       dureeEstimee: '',
       adresseChantier: '',
       villeChantier: '',
@@ -225,9 +228,16 @@ export default function NouvelAppelOffre() {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
+    const { name, value, type } = e.target
+    const checked = (e.target as HTMLInputElement).checked
+    
     setFormData(prev => {
-      const newData = { ...prev, [name]: value }
+      const newData = { ...prev, [name]: type === 'checkbox' ? checked : value }
+      
+      // Si on active l'enchère libre, vider le champ prixMax
+      if (name === 'isEnchereLibre' && checked) {
+        newData.prixMax = ''
+      }
       
       // Validation des dates pour s'assurer de la cohérence
       if (name === 'dateDebut' && value && newData.dateFin && value >= newData.dateFin) {
@@ -382,7 +392,7 @@ export default function NouvelAppelOffre() {
         throw new Error('Veuillez remplir tous les champs obligatoires')
       }
 
-      if (!formData.prixMax || parseFloat(formData.prixMax) <= 0) {
+      if (!formData.isEnchereLibre && (!formData.prixMax || parseFloat(formData.prixMax) <= 0)) {
         throw new Error('Le prix maximum doit être supérieur à 0')
       }
 
@@ -423,7 +433,7 @@ export default function NouvelAppelOffre() {
 
       const projetData = {
         ...formData,
-        prixMax: parseFloat(formData.prixMax),
+        prixMax: formData.isEnchereLibre ? null : parseFloat(formData.prixMax),
         dureeEstimee: parseInt(formData.dureeEstimee),
         infosAdditionnelles,
         externalFilesLink: filesMode === 'link' ? externalFilesLink : null
@@ -683,8 +693,21 @@ export default function NouvelAppelOffre() {
                   </div>
 
                   <div className="col-span-3">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <input
+                        type="checkbox"
+                        id="isEnchereLibre"
+                        name="isEnchereLibre"
+                        checked={formData.isEnchereLibre}
+                        onChange={handleInputChange}
+                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="isEnchereLibre" className="text-sm font-medium text-gray-700">
+                        Enchère libre (pas de budget maximum)
+                      </label>
+                    </div>
                     <label htmlFor="prixMax" className="block text-sm font-medium text-gray-700">
-                      Budget maximum (€) *
+                      Budget maximum (€) {!formData.isEnchereLibre && '*'}
                     </label>
                     <input
                       type="number"
@@ -694,9 +717,16 @@ export default function NouvelAppelOffre() {
                       onChange={handleInputChange}
                       min="0"
                       step="0.01"
-                      className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
-                      required
+                      disabled={formData.isEnchereLibre}
+                      className={`mt-1 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500 ${formData.isEnchereLibre ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      placeholder={formData.isEnchereLibre ? 'Enchère libre - pas de budget maximum' : 'Ex: 5000'}
+                      required={!formData.isEnchereLibre}
                     />
+                    {formData.isEnchereLibre && (
+                      <p className="mt-2 text-sm text-blue-600">
+                        💡 Votre projet sera en enchère libre. Les sous-traitants pourront proposer n&apos;importe quel prix.
+                      </p>
+                    )}
                   </div>
 
                   <div className="col-span-3">
@@ -1168,7 +1198,11 @@ export default function NouvelAppelOffre() {
                 </div>
                 {/* Budget / Durée */}
                 <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
-                  {formData.prixMax && (
+                  {formData.isEnchereLibre ? (
+                    <div className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                      🎯 Enchère libre
+                    </div>
+                  ) : formData.prixMax && (
                     <div className="inline-flex items-center px-2 py-1 rounded-md bg-green-50 text-green-700 border border-green-200">
                       💰 {Number(formData.prixMax || 0).toLocaleString('fr-FR')} €
                     </div>

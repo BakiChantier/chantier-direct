@@ -3,8 +3,53 @@
 import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import type { Metadata, Viewport } from "next";
 
 
+export const metadata: Metadata = {
+  title: "Documentation -Chantier Direct",
+  description: "Documentation pour les donneurs d'ordre et les sous-traitants",
+  keywords: "Chantier Direct, contact, question, demande de service",
+  authors: [{ name: "Chantier Direct" }],
+  publisher: "Chantier Direct",
+  icons: {
+    icon: "/ChantierDirectIcon.png",
+  },
+  openGraph: {
+    images: [
+        {
+            url : "/ChantierDirectIcon.png",
+            width: 1200,
+            height: 630,
+            alt: "Documentation - Chantier Direct",
+        },
+    ],
+    title: "Documentation - Chantier Direct",
+    description: "Documentation pour les donneurs d'ordre et les sous-traitants",
+    url: "https://www.chantier-direct.fr",
+    siteName: "Chantier Direct",
+    locale: "fr_FR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Documentation - Chantier Direct",
+    description: "Documentation pour les donneurs d'ordre et les sous-traitants",
+    images: "/ChantierDirectIcon.png",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: "https://www.chantier-direct.fr/documentation",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
 interface DocSection {
   id: string

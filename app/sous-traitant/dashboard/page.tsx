@@ -20,7 +20,8 @@ interface Projet {
   titre: string
   description: string
   typeChantier: string[]
-  prixMax: number
+  prixMax: number | null
+  isEnchereLibre: boolean
   dureeEstimee: number
   status: string
   villeChantier: string
@@ -46,7 +47,8 @@ interface Offre {
     id: string
     titre: string
     villeChantier: string
-    prixMax: number
+    prixMax: number | null
+    isEnchereLibre: boolean
     status: string
     donneurOrdre: User
   }
@@ -600,7 +602,7 @@ export default function SousTraitantDashboard() {
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-medium text-gray-900 truncate">{projet.titre}</h3>
                         <span className="text-lg font-bold text-green-600">
-                          {projet.prixMax.toLocaleString('fr-FR')} €
+                          {projet.isEnchereLibre ? '🎯 Enchère libre' : `${projet.prixMax?.toLocaleString('fr-FR')} €`}
                         </span>
                       </div>
                       

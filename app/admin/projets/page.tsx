@@ -10,7 +10,8 @@ interface Projet {
   id: string
   titre: string
   description: string
-  prixMax: number
+  prixMax: number | null
+  isEnchereLibre: boolean
   dureeEstimee: number
   typeChantier: string[]
   adresseChantier: string
@@ -395,7 +396,7 @@ export default function AdminProjetsPage() {
                             {projet.donneurOrdre.nomSociete || `${projet.donneurOrdre.prenom} ${projet.donneurOrdre.nom}`}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {projet.villeChantier} • {projet.prixMax.toLocaleString()}€ max
+                            {projet.villeChantier} • {projet.isEnchereLibre ? 'Enchère libre' : `${projet.prixMax?.toLocaleString('fr-FR')}€ max`}
                           </p>
                         </div>
                       <div className="flex items-center space-x-2">
@@ -695,9 +696,11 @@ Vous pouvez utiliser des listes à puces, des retours à la ligne, etc."
               {/* Informations financières et temporelles */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <span className="font-medium text-gray-500">Budget maximum :</span>
+                  <span className="font-medium text-gray-500">
+                    {selectedProjet.isEnchereLibre ? 'Type de projet :' : 'Budget maximum :'}
+                  </span>
                   <div className="mt-1 text-lg font-semibold text-green-600">
-                    {selectedProjet.prixMax.toLocaleString('fr-FR')} €
+                    {selectedProjet.isEnchereLibre ? '🎯 Enchère libre' : `${selectedProjet.prixMax?.toLocaleString('fr-FR')} €`}
                   </div>
                 </div>
                 <div>

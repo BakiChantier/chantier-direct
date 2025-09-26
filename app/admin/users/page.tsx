@@ -277,7 +277,9 @@ export default function AdminUsersPage() {
                           setModalMode('edit')
                           setShowModal(true)
                         }}
-                        className="text-yellow-600 hover:text-yellow-900"
+                        disabled={user.role === 'SUPER_ADMIN'}
+                        className={`${user.role === 'SUPER_ADMIN' ? 'text-gray-400 cursor-not-allowed' : 'text-yellow-600 hover:text-yellow-900'}`}
+                        title={user.role === 'SUPER_ADMIN' ? 'Impossible de modifier un Super Admin' : 'Modifier l\'utilisateur'}
                       >
                         Modifier
                       </button>
@@ -287,7 +289,9 @@ export default function AdminUsersPage() {
                           setModalMode('delete')
                           setShowModal(true)
                         }}
-                        className="text-red-600 hover:text-red-900"
+                        disabled={user.role === 'SUPER_ADMIN'}
+                        className={`${user.role === 'SUPER_ADMIN' ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:text-red-900'}`}
+                        title={user.role === 'SUPER_ADMIN' ? 'Impossible de supprimer un Super Admin' : 'Supprimer l\'utilisateur'}
                       >
                         Supprimer
                       </button>

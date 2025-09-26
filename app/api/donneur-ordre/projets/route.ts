@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Titre, description et types de chantier sont requis' }, { status: 400 });
     }
 
-    if (!data.prixMax || data.prixMax <= 0) {
+    // Validation du prix maximum (seulement si pas d'enchère libre)
+    if (!data.isEnchereLibre && (!data.prixMax || data.prixMax <= 0)) {
       return NextResponse.json({ error: 'Prix maximum invalide' }, { status: 400 });
     }
 
@@ -88,7 +89,8 @@ export async function POST(request: NextRequest) {
         titre: data.titre,
         description: data.description,
         typeChantier: data.typeChantier,
-        prixMax: data.prixMax,
+        prixMax: data.isEnchereLibre ? null : data.prixMax,
+        isEnchereLibre: data.isEnchereLibre || false,
         dureeEstimee: data.dureeEstimee,
         adresseChantier: data.adresseChantier,
         villeChantier: data.villeChantier,
@@ -151,6 +153,7 @@ export async function POST(request: NextRequest) {
             adresseChantier: projet.adresseChantier,
             villeChantier: projet.villeChantier,
             prixMax: projet.prixMax,
+            isEnchereLibre: projet.isEnchereLibre,
             typeChantier: data.typeChantier
           },
           sousTraitant: {
@@ -186,6 +189,7 @@ export async function POST(request: NextRequest) {
           description: projet.description,
           typeChantier: data.typeChantier,
           prixMax: projet.prixMax,
+          isEnchereLibre: projet.isEnchereLibre,
           dureeEstimee: projet.dureeEstimee,
           adresseChantier: projet.adresseChantier,
           villeChantier: projet.villeChantier,

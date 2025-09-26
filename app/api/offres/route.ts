@@ -92,8 +92,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Vérifier que le prix proposé ne dépasse pas le budget maximum
-    if (prixPropose > projet.prixMax) {
+    // Vérifier que le prix proposé ne dépasse pas le budget maximum (seulement si pas d'enchère libre)
+    if (!projet.isEnchereLibre && projet.prixMax && prixPropose > projet.prixMax) {
       return NextResponse.json(
         { error: `Le prix proposé ne peut pas dépasser le budget maximum de ${projet.prixMax.toLocaleString('fr-FR')} €` },
         { status: 400 }

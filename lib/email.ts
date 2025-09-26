@@ -94,6 +94,7 @@ export interface ProjetNotificationData {
     adresseChantier: string
     villeChantier: string
     prixMax?: number
+    isEnchereLibre?: boolean
   }
   action: 'accepte' | 'rejete'
 }
@@ -112,6 +113,7 @@ export interface NouveauProjetNotificationData {
     adresseChantier: string
     villeChantier: string
     prixMax?: number
+    isEnchereLibre?: boolean
     typeChantier: string[]
   }
   sousTraitant: {
@@ -176,7 +178,8 @@ export interface NouveauProjetAdminData {
     titre: string
     description: string
     typeChantier: string[]
-    prixMax: number
+    prixMax: number | null
+    isEnchereLibre: boolean
     dureeEstimee: number
     adresseChantier: string
     villeChantier: string

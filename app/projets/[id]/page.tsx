@@ -32,7 +32,8 @@ interface Projet {
   titre: string
   description: string
   typeChantier: string[]
-  prixMax: number
+  prixMax: number | null
+  isEnchereLibre: boolean
   dureeEstimee: number
   status: string
   adresseChantier: string
@@ -247,8 +248,8 @@ export default function ProjetDetailSousTraitantPage() {
       return
     }
 
-    if (prixPropose > (projet?.prixMax || 0)) {
-      setError(`Le prix proposé ne peut pas dépasser le budget maximum de ${projet?.prixMax?.toLocaleString('fr-FR')} €`)
+    if (!projet?.isEnchereLibre && projet?.prixMax && prixPropose > projet.prixMax) {
+      setError(`Le prix proposé ne peut pas dépasser le budget maximum de ${projet.prixMax.toLocaleString('fr-FR')} €`)
       return
     }
 
@@ -377,7 +378,7 @@ export default function ProjetDetailSousTraitantPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{projet.titre}</h1>
               <p className="text-gray-600 mt-1">
-                {projet.villeChantier} • Budget max: {projet.prixMax.toLocaleString('fr-FR')} €
+                {projet.villeChantier} • {projet.isEnchereLibre ? 'Enchère libre' : `Budget max: ${projet.prixMax?.toLocaleString('fr-FR')} €`}
               </p>
             </div>
           </div>
@@ -558,8 +559,12 @@ export default function ProjetDetailSousTraitantPage() {
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="text-sm font-medium text-gray-500">Budget maximum :</span>
-                        <p className="text-sm text-gray-900 mt-1 font-semibold">{projet.prixMax.toLocaleString('fr-FR')} €</p>
+                        <span className="text-sm font-medium text-gray-500">
+                          {projet.isEnchereLibre ? 'Type de projet :' : 'Budget maximum :'}
+                        </span>
+                        <p className="text-sm text-gray-900 mt-1 font-semibold">
+                          {projet.isEnchereLibre ? '🎯 Enchère libre' : `${projet.prixMax?.toLocaleString('fr-FR')} €`}
+                        </p>
                       </div>
                       <div>
                         <span className="text-sm font-medium text-gray-500">Durée estimée :</span>
@@ -681,19 +686,29 @@ export default function ProjetDetailSousTraitantPage() {
                 {/* Formulaire */}
                 <form onSubmit={handleSubmitOffre} className={`space-y-6 order-2 lg:order-1 ${projet.userAlreadyApplied ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Prix proposé (€) *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Prix proposé (€) *
+                      {projet.isEnchereLibre && (
+                        <span className="ml-2 text-blue-600 text-xs">(Enchère libre - aucun plafond)</span>
+                      )}
+                    </label>
                     <input
                       type="number"
                       name="prixPropose"
                       value={offreData.prixPropose}
                       onChange={handleInputChange}
-                      max={projet.prixMax}
+                      max={projet.isEnchereLibre ? undefined : projet.prixMax || undefined}
                       step="0.01"
                       disabled={projet.userAlreadyApplied}
                       className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      placeholder={`Max: ${projet.prixMax.toLocaleString('fr-FR')} €`}
+                      placeholder={projet.isEnchereLibre ? 'Proposez votre meilleur prix' : `Max: ${projet.prixMax?.toLocaleString('fr-FR')} €`}
                       required
                     />
+                    {projet.isEnchereLibre && (
+                      <p className="mt-1 text-xs text-blue-600">
+                        💡 En enchère libre, vous pouvez proposer n&apos;importe quel prix. Le donneur d&apos;ordre choisira selon ses critères.
+                      </p>
+                    )}
                   </div>
 
                   <div>

@@ -33,7 +33,8 @@ interface Offre {
     villeChantier: string
     codePostalChantier: string
     adresseChantier: string
-    prixMax: number
+    prixMax: number | null
+    isEnchereLibre: boolean
     dureeEstimee: number
     dateDebut: string
     dateFin: string
@@ -77,6 +78,12 @@ export default function SousTraitantOffersPage() {
   const [sendingMessage, setSendingMessage] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showOffersList, setShowOffersList] = useState(true) // Pour mobile
+
+  // Fonction pour tronquer le prix si trop long
+  const formatPrix = (prix: number) => {
+    const prixFormate = prix.toLocaleString('fr-FR')
+    return prixFormate.length > 12 ? prixFormate.substring(0, 12) + '...' : prixFormate
+  }
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -295,7 +302,7 @@ export default function SousTraitantOffersPage() {
                             <div className="mt-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-sm font-bold text-green-600">
-                                  {offre.prixPropose.toLocaleString('fr-FR')} €
+                                  {formatPrix(offre.prixPropose)} €
                                 </span>
                                 <span className="text-xs text-gray-500">
                                   {offre.delaiPropose} jours
@@ -468,7 +475,7 @@ export default function SousTraitantOffersPage() {
                           <div className="mt-2">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-bold text-green-600">
-                                {offre.prixPropose.toLocaleString('fr-FR')} €
+                                {formatPrix(offre.prixPropose)} €
                               </span>
                               <span className="text-xs text-gray-500">
                                 {offre.delaiPropose} jours
@@ -522,8 +529,12 @@ export default function SousTraitantOffersPage() {
                       <h3 className="text-sm font-medium text-gray-900 mb-3">Informations du projet</h3>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-500">Budget maximum:</span>
-                          <span className="font-medium">{selectedOffre.projet.prixMax.toLocaleString('fr-FR')} €</span>
+                          <span className="text-gray-500">
+                            {selectedOffre.projet.isEnchereLibre ? 'Type de projet:' : 'Budget maximum:'}
+                          </span>
+                          <span className="font-medium">
+                            {selectedOffre.projet.isEnchereLibre ? '🎯 Enchère libre' : `${selectedOffre.projet.prixMax?.toLocaleString('fr-FR')} €`}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Durée estimée:</span>

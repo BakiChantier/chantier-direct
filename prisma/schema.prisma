@@ -178,7 +178,8 @@ model Projet {
   titre           String
   description     String
   typeChantier    TypeChantier[]
-  prixMax         Float
+  prixMax         Float?        // Budget maximum (optionnel pour enchère libre)
+  isEnchereLibre  Boolean       @default(false) // Si true, pas de budget maximum
   dureeEstimee    Int           // En jours
   status          ProjetStatus  @default(OUVERT)
   

@@ -46,6 +46,15 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
   })
   const [saving, setSaving] = useState(false)
 
+  // Fonction utilitaire pour les propriétés des inputs selon le rôle
+  const getInputProps = (baseClass: string) => {
+    const isSuperAdmin = user.role === 'SUPER_ADMIN'
+    return {
+      disabled: isSuperAdmin,
+      className: `${baseClass} ${isSuperAdmin ? 'bg-gray-100 cursor-not-allowed' : ''}`
+    }
+  }
+
   // Bloquer le scroll de la page de fond
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -255,7 +264,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                         type="text"
                         value={editData.prenom}
                         onChange={(e) => setEditData({...editData, prenom: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                        {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                         placeholder="Prénom"
                       />
                     )}
@@ -272,7 +281,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                         type="text"
                         value={editData.nom}
                         onChange={(e) => setEditData({...editData, nom: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                        {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                         placeholder="Nom"
                         required
                       />
@@ -290,7 +299,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                         type="email"
                         value={editData.email}
                         onChange={(e) => setEditData({...editData, email: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                        {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                         placeholder="email@exemple.com"
                         required
                       />
@@ -308,7 +317,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                         type="tel"
                         value={editData.telephone}
                         onChange={(e) => setEditData({...editData, telephone: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                        {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                         placeholder="06 12 34 56 78"
                       />
                     )}
@@ -325,7 +334,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                         type="text"
                         value={editData.nomSociete}
                         onChange={(e) => setEditData({...editData, nomSociete: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                        {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                         placeholder="Nom de l'entreprise"
                       />
                     )}
@@ -342,7 +351,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                         type="text"
                         value={editData.adresse}
                         onChange={(e) => setEditData({...editData, adresse: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                        {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                         placeholder="Adresse complète"
                       />
                     )}
@@ -359,7 +368,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                         type="text"
                         value={editData.codePostal}
                         onChange={(e) => setEditData({...editData, codePostal: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                        {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                         placeholder="12345"
                       />
                     )}
@@ -376,7 +385,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                         type="text"
                         value={editData.ville}
                         onChange={(e) => setEditData({...editData, ville: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                        {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                         placeholder="Ville"
                       />
                     )}
@@ -468,7 +477,7 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                             max="1000"
                             value={editData.nombreEmployes}
                             onChange={(e) => setEditData({...editData, nombreEmployes: parseInt(e.target.value) || 1})}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                            {...getInputProps("w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors")}
                             placeholder="Nombre d'employés"
                           />
                         )}
@@ -500,7 +509,8 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
                                     type="checkbox"
                                     checked={editData.expertises.includes(expertise)}
                                     onChange={() => handleExpertiseToggle(expertise)}
-                                    className="mr-2 w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                    disabled={user.role === 'SUPER_ADMIN'}
+                                    className={`mr-2 w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300 rounded ${user.role === 'SUPER_ADMIN' ? 'opacity-50 cursor-not-allowed' : ''}`}
                                   />
                                   <span className="text-sm text-gray-700">{expertise}</span>
                                 </label>
@@ -532,12 +542,22 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
               >
                 Annuler
               </button>
-              <button
-                onClick={() => onDelete(user.id)}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
-              >
-                Supprimer définitivement
-              </button>
+              {user.role === 'SUPER_ADMIN' ? (
+                <button
+                  disabled
+                  className="px-6 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed font-medium"
+                  title="Impossible de supprimer un Super Admin"
+                >
+                  Suppression interdite
+                </button>
+              ) : (
+                <button
+                  onClick={() => onDelete(user.id)}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
+                >
+                  Supprimer définitivement
+                </button>
+              )}
             </>
           ) : mode === 'edit' ? (
             <>
@@ -548,23 +568,33 @@ export default function UserModal({ user, mode, onClose, onDelete, onUpdate, cur
               >
                 Annuler
               </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50 flex items-center"
-              >
-                {saving ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Sauvegarde...
-                  </>
-                ) : (
-                  'Sauvegarder les modifications'
-                )}
-              </button>
+              {user.role === 'SUPER_ADMIN' ? (
+                <button
+                  disabled
+                  className="px-6 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed font-medium"
+                  title="Impossible de modifier un Super Admin"
+                >
+                  Modification interdite
+                </button>
+              ) : (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50 flex items-center"
+                >
+                  {saving ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    'Sauvegarder les modifications'
+                  )}
+                </button>
+              )}
             </>
           ) : (
             <button
