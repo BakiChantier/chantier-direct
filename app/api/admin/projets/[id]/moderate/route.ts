@@ -97,7 +97,7 @@ export async function PATCH(
           description: updatedProjet.description,
           adresseChantier: updatedProjet.adresseChantier,
           villeChantier: updatedProjet.villeChantier,
-          prixMax: updatedProjet.prixMax
+          prixMax: updatedProjet.prixMax || undefined
         },
         action: action === 'VALIDATE' ? 'accepte' : 'rejete'
       })

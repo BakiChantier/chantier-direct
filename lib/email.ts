@@ -604,7 +604,7 @@ const getNouveauProjetAdminTemplate = (data: NouveauProjetAdminData) => `
                 <h4>${data.projet.titre}</h4>
                 <p><strong>Description :</strong> ${data.projet.description}</p>
                 <p><strong>Localisation :</strong> ${data.projet.adresseChantier}, ${data.projet.villeChantier}</p>
-                <p><strong>Budget maximum :</strong> ${data.projet.prixMax.toLocaleString('fr-FR')} €</p>
+                <p><strong>Budget maximum :</strong> ${data.projet.prixMax ? data.projet.prixMax.toLocaleString('fr-FR') + ' €' : 'Enchère libre'}</p>
                 <p><strong>Durée estimée :</strong> ${data.projet.dureeEstimee} jour${data.projet.dureeEstimee > 1 ? 's' : ''}</p>
                 <div class="skills">
                     ${data.projet.typeChantier.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
@@ -1048,7 +1048,7 @@ Détails du projet :
 - Titre : ${data.projet.titre}
 - Description : ${data.projet.description}
 - Localisation : ${data.projet.adresseChantier}, ${data.projet.villeChantier}
-- Budget maximum : ${data.projet.prixMax.toLocaleString('fr-FR')} €
+- Budget maximum : ${data.projet.prixMax ? data.projet.prixMax.toLocaleString('fr-FR') + ' €' : 'Enchère libre'}
 - Durée estimée : ${data.projet.dureeEstimee} jour${data.projet.dureeEstimee > 1 ? 's' : ''}
 - Types de chantier : ${data.projet.typeChantier.join(', ')}
 - Date de début : ${data.projet.dateDebut.toLocaleDateString('fr-FR')}

@@ -152,8 +152,8 @@ export async function POST(request: NextRequest) {
             description: projet.description,
             adresseChantier: projet.adresseChantier,
             villeChantier: projet.villeChantier,
-            prixMax: projet.prixMax,
-            isEnchereLibre: projet.isEnchereLibre,
+            prixMax: projet.prixMax || undefined,
+            isEnchereLibre: (projet as any).isEnchereLibre, // eslint-disable-line @typescript-eslint/no-explicit-any
             typeChantier: data.typeChantier
           },
           sousTraitant: {
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
           description: projet.description,
           typeChantier: data.typeChantier,
           prixMax: projet.prixMax,
-          isEnchereLibre: projet.isEnchereLibre,
+          isEnchereLibre: (projet as any).isEnchereLibre, // eslint-disable-line @typescript-eslint/no-explicit-any
           dureeEstimee: projet.dureeEstimee,
           adresseChantier: projet.adresseChantier,
           villeChantier: projet.villeChantier,
